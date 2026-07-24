@@ -34,8 +34,8 @@ banner
 # 0. Read attacker IP from config if present
 # ---------------------------------------------------------------------------
 if [ -f "$CONFIG" ]; then
-    _ip=$(python3 -c "import yaml; c=yaml.safe_load(open('$CONFIG')); print(c['lab']['attacker_ip'])" 2>/dev/null)
-    [ -n "$_ip" ] && ATTACKER_IP="$_ip"
+    _ip=$(python3 -c "import yaml; c=yaml.safe_load(open('$CONFIG')); print(c['lab']['attacker_ip'])" 2>/dev/null || true)
+    if [ -n "$_ip" ]; then ATTACKER_IP="$_ip"; fi
     ok "Read config.yaml — attacker IP: $ATTACKER_IP"
 else
     warn "config.yaml not found — using default attacker IP: $ATTACKER_IP"
