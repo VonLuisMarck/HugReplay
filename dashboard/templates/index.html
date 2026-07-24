@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phantom Pipeline — Agentic Attacker</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">⬛ PHANTOM PIPELINE</span>
+    <span class="subtitle">Autonomous AI Attacker — HuggingFace Incident Replay</span>
+  </div>
+  <div class="header-right">
+    <span id="session-badge" class="badge badge-idle">IDLE</span>
+    <button id="btn-start" onclick="startAttack()">▶ Launch Attack</button>
+  </div>
+</header>
+
+<main>
+  <!-- Left column: Attack Graph + Decision Log -->
+  <section class="panel panel-left">
+    <div class="panel-title">AGENT DECISION GRAPH</div>
+
+    <!-- LangGraph node visualization -->
+    <div id="attack-graph-container">
+      <svg id="attack-graph"></svg>
+    </div>
+
+    <!-- Current LLM reasoning -->
+    <div id="current-reasoning" class="reasoning-box hidden">
+      <div class="reasoning-label">LLM REASONING</div>
+      <div id="reasoning-text"></div>
+    </div>
+
+    <!-- Decision timeline -->
+    <div class="panel-title" style="margin-top:16px">DECISION LOG</div>
+    <div id="decision-log" class="log-container"></div>
+  </section>
+
+  <!-- Center: Network Topology Map -->
+  <section class="panel panel-center">
+    <div class="panel-title">NETWORK TOPOLOGY</div>
+    <div id="network-map-container">
+      <svg id="network-map"></svg>
+    </div>
+
+    <!-- Active technique info -->
+    <div id="active-technique" class="technique-box hidden">
+      <div class="technique-mitre" id="technique-mitre"></div>
+      <div class="technique-name" id="technique-name"></div>
+      <div class="technique-detection" id="technique-detection"></div>
+    </div>
+  </section>
+
+  <!-- Right column: Falcon Detections -->
+  <section class="panel panel-right">
+    <div class="panel-title">FALCON DETECTIONS <span id="det-count" class="count-badge">0</span></div>
+    <div id="detections-feed" class="detections-container"></div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">STEPS</div>
+        <div class="stat-value" id="stat-steps">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">DETECTIONS</div>
+        <div class="stat-value" id="stat-detections">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">CREDS FOUND</div>
+        <div class="stat-value" id="stat-creds">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">STATUS</div>
+        <div class="stat-value" id="stat-status">—</div>
+      </div>
+    </div>
+
+    <!-- Credentials found -->
+    <div class="panel-title" style="margin-top:16px">CREDENTIALS HARVESTED</div>
+    <div id="credentials-list" class="creds-container"></div>
+  </section>
+</main>
+
+<script src="/static/js/attack_graph.js"></script>
+<script src="/static/js/network_map.js"></script>
+<script src="/static/js/detections.js"></script>
+
+<script>
+// ---- SSE Connection ----
+const es = new EventSource('/events');
+let stepCount = 0, detCount = 0, credCount = 0;
+
+es.onmessage = (e) => {
+  const event = JSON.parse(e.data);
+  handleEvent(event);
+};
+
+es.onerror = () => {
+  document.getElementById('session-badge').textContent = 'DISCONNECTED';
+  document.getElementById('session-badge').className = 'badge badge-error';
+};
+
+function handleEvent(event) {
+  switch(event.type) {
+    case 'connected':
+      console.log('[SSE] Connected to dashboard');
+      break;
+
+    case 'session_start':
+      setStatus('RUNNING', 'badge-running');
+      document.getElementById('stat-status').textContent = 'RUNNING';
+      console.log('[Session] Started:', event.session_id);
+      break;
+
+    case 'topology_init':
+      initNetworkMap(event.nodes);
+      break;
+
+    case 'node_state':
+      updateAttackGraph(event.node, event.state, event.detail);
+      if (event.state === 'active' && event.node === 'decision_node') {
+        showReasoning(event.detail);
+      }
+      if (event.detail && (event.mitre_id || event.expected_detection)) {
+        showTechniqueInfo(event.mitre_id, event.detail, event.expected_detection);
+      }
+      stepCount++;
+      document.getElementById('stat-steps').textContent = stepCount;
+      appendDecisionLog(event);
+      break;
+
+    case 'network_event':
+      animateNetworkFlow(event.source, event.target, event.technique, event.label, event.color);
+      break;
+
+    case 'node_compromised':
+      markNodeCompromised(event.ip);
+      break;
+
+    case 'falcon_detection':
+      addDetection(event);
+      detCount++;
+      document.getElementById('det-count').textContent = detCount;
+      document.getElementById('stat-detections').textContent = detCount;
+      break;
+
+    case 'credential_found':
+      addCredential(event.cred_type, event.technique);
+      credCount++;
+      document.getElementById('stat-creds').textContent = credCount;
+      break;
+
+    case 'session_complete':
+      setStatus('COMPLETE', 'badge-done');
+      document.getElementById('stat-status').textContent = 'DONE';
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-start').textContent = '▶ Launch Again';
+      break;
+
+    case 'error':
+      setStatus('ERROR', 'badge-error');
+      console.error('[Error]', event.message);
+      break;
+  }
+}
+
+function setStatus(text, cls) {
+  const badge = document.getElementById('session-badge');
+  badge.textContent = text;
+  badge.className = 'badge ' + cls;
+}
+
+function showReasoning(text) {
+  const box = document.getElementById('current-reasoning');
+  document.getElementById('reasoning-text').textContent = text;
+  box.classList.remove('hidden');
+}
+
+function showTechniqueInfo(mitre, name, detection) {
+  const box = document.getElementById('active-technique');
+  document.getElementById('technique-mitre').textContent = mitre || '';
+  document.getElementById('technique-name').textContent = name || '';
+  document.getElementById('technique-detection').textContent = detection ? '⚡ ' + detection : '';
+  box.classList.remove('hidden');
+}
+
+function appendDecisionLog(event) {
+  if (event.node !== 'decision_node' || event.state !== 'done') return;
+  const log = document.getElementById('decision-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const ts = new Date().toLocaleTimeString();
+  entry.innerHTML = `<span class="log-ts">${ts}</span> <span class="log-detail">${escapeHtml(event.detail || '')}</span>`;
+  log.prepend(entry);
+}
+
+function addCredential(credType, technique) {
+  const container = document.getElementById('credentials-list');
+  const item = document.createElement('div');
+  item.className = 'cred-item';
+  item.innerHTML = `<span class="cred-type">${escapeHtml(credType)}</span> <span class="cred-via">via ${escapeHtml(technique || '')}</span>`;
+  container.prepend(item);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function startAttack() {
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-start').textContent = '⏳ Running...';
+  stepCount = 0; detCount = 0; credCount = 0;
+
+  try {
+    const resp = await fetch('/start', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+    const data = await resp.json();
+    if (data.error) {
+      alert('Error: ' + data.error);
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-start').textContent = '▶ Launch Attack';
+    }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('btn-start').disabled = false;
+  }
+}
+</script>
+</body>
+</html>

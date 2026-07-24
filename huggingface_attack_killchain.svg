@@ -1,0 +1,549 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 780" width="1600" height="780">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0e27;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14182e;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Stage color gradients -->
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff4d4d" />
+      <stop offset="100%" style="stop-color:#c0392b" />
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff7043" />
+      <stop offset="100%" style="stop-color:#bf360c" />
+    </linearGradient>
+    <linearGradient id="agentGradOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f5a623;stop-opacity:0.15" />
+      <stop offset="50%" style="stop-color:#f5a623;stop-opacity:0.08" />
+      <stop offset="100%" style="stop-color:#f5a623;stop-opacity:0.15" />
+    </linearGradient>
+
+    <!-- Glow filters -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowStrong">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowAgent">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Blueprint grid -->
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1a3a5c" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+
+    <!-- Arrow marker - red -->
+    <marker id="arrowRed" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,-5L10,0L0,5" fill="#e74c3c" opacity="0.8"/>
+    </marker>
+    <!-- Arrow marker - orange agent -->
+    <marker id="arrowOrange" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,-5L10,0L0,5" fill="#f5a623" opacity="0.8"/>
+    </marker>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- BACKGROUND                                          -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <rect width="1600" height="780" fill="url(#bg)" rx="12"/>
+  <rect width="1600" height="780" fill="url(#grid)" rx="12" opacity="0.4"/>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TITLE                                               -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#e0e8f0" font-weight="700" letter-spacing="4">HUGGINGFACE INCIDENT — JULY 2026</text>
+  <text x="800" y="76" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#6a8aaa" font-weight="400" letter-spacing="3">FIRST DOCUMENTED END-TO-END AUTONOMOUS AI AGENT ATTACK</text>
+
+  <!-- Title separator line -->
+  <line x1="80" y1="90" x2="1520" y2="90" stroke="#1a3a5c" stroke-width="1" opacity="0.6"/>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- AUTONOMOUS AI AGENT BRACKET (stages 3-7)           -->
+  <!-- Drawn BEFORE stage cards so it appears behind them -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- Background fill for agent zone -->
+  <rect x="626" y="118" width="892" height="460" rx="10"
+        fill="url(#agentGradOrange)" stroke="#f5a623" stroke-width="1.5"
+        stroke-dasharray="8,5" opacity="0.7"/>
+
+  <!-- Agent zone label top -->
+  <g filter="url(#glowAgent)">
+    <rect x="800" y="106" width="302" height="28" rx="14"
+          fill="#f5a623" opacity="0.18" stroke="#f5a623" stroke-width="1.2"/>
+    <text x="951" y="125" text-anchor="middle" font-family="sans-serif"
+          font-size="12" fill="#f5a623" font-weight="700" letter-spacing="2">⬡ AUTONOMOUS AI AGENT</text>
+  </g>
+
+  <!-- Agent icon top-right of bracket -->
+  <g transform="translate(1488, 122)" filter="url(#glowAgent)">
+    <circle cx="0" cy="0" r="14" fill="none" stroke="#f5a623" stroke-width="1.5" opacity="0.6"/>
+    <circle cx="0" cy="-4" r="5" fill="#f5a623" opacity="0.5"/>
+    <path d="M-7,8 Q0,2 7,8" fill="none" stroke="#f5a623" stroke-width="1.5" opacity="0.5"/>
+    <text x="0" y="32" text-anchor="middle" font-family="sans-serif" font-size="7" fill="#f5a623" opacity="0.6">LLM</text>
+  </g>
+
+  <!-- Agent description inside bracket (bottom) -->
+  <text x="1072" y="567" text-anchor="middle" font-family="sans-serif"
+        font-size="9" fill="#f5a623" opacity="0.5" font-style="italic">
+    "Many thousands of individual actions across a swarm of short-lived sandboxes"  — HuggingFace Report
+  </text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- STAGE CARDS                                         -->
+  <!-- Layout: 7 stages, x positions: 80, 300, 520, 740, 960, 1180, 1400 -->
+  <!-- Card width: 180, height: 300, top y: 130 -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- ── STAGE 1: INITIAL ACCESS ─────────────────────── -->
+  <g transform="translate(80, 130)">
+    <!-- Card body -->
+    <rect x="0" y="0" width="190" height="310" rx="8"
+          fill="#0f1525" stroke="#e74c3c" stroke-width="1.8" opacity="0.95"/>
+    <!-- Top accent bar -->
+    <rect x="0" y="0" width="190" height="6" rx="4" fill="#e74c3c" opacity="0.9"/>
+
+    <!-- Stage number badge -->
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#e74c3c" opacity="0.2" stroke="#e74c3c" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#e74c3c" font-weight="700">01</text>
+
+    <!-- Tactic label -->
+    <text x="100" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="8" fill="#e74c3c" opacity="0.7" letter-spacing="1.5" font-weight="600">INITIAL ACCESS</text>
+
+    <!-- Separator -->
+    <line x1="12" y1="44" x2="178" y2="44" stroke="#e74c3c" stroke-width="0.5" opacity="0.3"/>
+
+    <!-- Stage name -->
+    <text x="95" y="68" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Malicious</text>
+    <text x="95" y="86" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Dataset</text>
+
+    <!-- Icon area -->
+    <g transform="translate(95, 130)" filter="url(#glow)">
+      <!-- Dataset icon -->
+      <rect x="-28" y="-22" width="56" height="44" rx="4"
+            fill="none" stroke="#e74c3c" stroke-width="1.5" opacity="0.7"/>
+      <rect x="-20" y="-14" width="40" height="5" rx="1" fill="#e74c3c" opacity="0.4"/>
+      <rect x="-20" y="-5" width="30" height="5" rx="1" fill="#e74c3c" opacity="0.35"/>
+      <rect x="-20" y="4" width="35" height="5" rx="1" fill="#e74c3c" opacity="0.4"/>
+      <!-- Skull/danger overlay -->
+      <text x="18" y="-12" font-family="sans-serif" font-size="14" fill="#e74c3c" opacity="0.8">⚠</text>
+    </g>
+
+    <!-- Description lines -->
+    <text x="95" y="185" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Pickle RCE +</text>
+    <text x="95" y="198" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">YAML template injection</text>
+    <text x="95" y="214" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Vector: data pipeline</text>
+    <text x="95" y="227" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">not phishing</text>
+
+    <!-- MITRE badge -->
+    <rect x="40" y="268" width="110" height="22" rx="11"
+          fill="#e74c3c" opacity="0.12" stroke="#e74c3c" stroke-width="0.8"/>
+    <text x="95" y="283" text-anchor="middle" font-family="monospace"
+          font-size="9" fill="#e74c3c" opacity="0.85">T1195 / T1059.006</text>
+  </g>
+
+  <!-- Arrow 1→2 -->
+  <g filter="url(#glow)">
+    <path d="M 276 285 L 306 285" fill="none" stroke="#e74c3c"
+          stroke-width="2" opacity="0.7" stroke-dasharray="5,3"
+          marker-end="url(#arrowRed)"/>
+  </g>
+
+  <!-- ── STAGE 2: EXECUTION ──────────────────────────── -->
+  <g transform="translate(312, 130)">
+    <rect x="0" y="0" width="190" height="310" rx="8"
+          fill="#0f1525" stroke="#e74c3c" stroke-width="1.8" opacity="0.95"/>
+    <rect x="0" y="0" width="190" height="6" rx="4" fill="#e74c3c" opacity="0.85"/>
+
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#e74c3c" opacity="0.2" stroke="#e74c3c" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#e74c3c" font-weight="700">02</text>
+
+    <text x="100" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="8" fill="#e74c3c" opacity="0.7" letter-spacing="1.5" font-weight="600">EXECUTION</text>
+
+    <line x1="12" y1="44" x2="178" y2="44" stroke="#e74c3c" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="95" y="68" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Dataset</text>
+    <text x="95" y="86" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Loader RCE</text>
+
+    <g transform="translate(95, 130)" filter="url(#glow)">
+      <!-- Python/code icon -->
+      <text x="-14" y="8" font-family="monospace" font-size="28" fill="#e74c3c" opacity="0.7">&gt;_</text>
+    </g>
+
+    <text x="95" y="185" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Pipeline loads dataset</text>
+    <text x="95" y="198" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">pickle.load() triggers</text>
+    <text x="95" y="211" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">arbitrary code on</text>
+    <text x="95" y="224" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">processing worker</text>
+
+    <rect x="40" y="268" width="110" height="22" rx="11"
+          fill="#e74c3c" opacity="0.12" stroke="#e74c3c" stroke-width="0.8"/>
+    <text x="95" y="283" text-anchor="middle" font-family="monospace"
+          font-size="9" fill="#e74c3c" opacity="0.85">T1059.006</text>
+  </g>
+
+  <!-- Arrow 2→3 (crosses into agent zone) -->
+  <g filter="url(#glow)">
+    <path d="M 508 285 L 546 285" fill="none" stroke="#f5a623"
+          stroke-width="2" opacity="0.8" stroke-dasharray="5,3"
+          marker-end="url(#arrowOrange)"/>
+    <!-- "AI TAKES OVER" label on transition arrow -->
+    <text x="527" y="272" text-anchor="middle" font-family="sans-serif"
+          font-size="7" fill="#f5a623" opacity="0.8" font-weight="600">AI TAKES OVER</text>
+  </g>
+
+  <!-- ── STAGE 3: DISCOVERY ──────────────────────────── -->
+  <g transform="translate(548, 130)">
+    <rect x="0" y="0" width="190" height="310" rx="8"
+          fill="#0f1428" stroke="#f5a623" stroke-width="1.8" opacity="0.95"/>
+    <rect x="0" y="0" width="190" height="6" rx="4" fill="#f5a623" opacity="0.8"/>
+
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#f5a623" opacity="0.2" stroke="#f5a623" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#f5a623" font-weight="700">03</text>
+
+    <text x="100" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="8" fill="#f5a623" opacity="0.7" letter-spacing="1.5" font-weight="600">DISCOVERY</text>
+
+    <line x1="12" y1="44" x2="178" y2="44" stroke="#f5a623" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="95" y="68" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Env Recon</text>
+
+    <g transform="translate(95, 125)" filter="url(#glow)">
+      <!-- Search/scan icon -->
+      <circle cx="0" cy="0" r="20" fill="none" stroke="#f5a623" stroke-width="1.5" opacity="0.6"/>
+      <circle cx="0" cy="0" r="12" fill="none" stroke="#f5a623" stroke-width="1" opacity="0.4"/>
+      <line x1="14" y1="14" x2="24" y2="24" stroke="#f5a623" stroke-width="2" opacity="0.7"/>
+    </g>
+
+    <text x="95" y="178" text-anchor="middle" font-family="monospace"
+          font-size="8" fill="#8a9ab5">env | grep AWS|TOKEN</text>
+    <text x="95" y="192" text-anchor="middle" font-family="monospace"
+          font-size="8" fill="#8a9ab5">~/.aws/credentials</text>
+    <text x="95" y="206" text-anchor="middle" font-family="monospace"
+          font-size="8" fill="#8a9ab5">~/.kube/config</text>
+    <text x="95" y="220" text-anchor="middle" font-family="monospace"
+          font-size="8" fill="#8a9ab5">HF_TOKEN / WandB</text>
+
+    <rect x="40" y="268" width="110" height="22" rx="11"
+          fill="#f5a623" opacity="0.12" stroke="#f5a623" stroke-width="0.8"/>
+    <text x="95" y="283" text-anchor="middle" font-family="monospace"
+          font-size="9" fill="#f5a623" opacity="0.85">T1082 / T1552.007</text>
+  </g>
+
+  <!-- Arrow 3→4 -->
+  <g filter="url(#glow)">
+    <path d="M 744 285 L 774 285" fill="none" stroke="#f5a623"
+          stroke-width="2" opacity="0.7" stroke-dasharray="5,3"
+          marker-end="url(#arrowOrange)"/>
+  </g>
+
+  <!-- ── STAGE 4: CREDENTIAL ACCESS ─────────────────── -->
+  <g transform="translate(780, 130)">
+    <rect x="0" y="0" width="190" height="310" rx="8"
+          fill="#0f1428" stroke="#ff6b8a" stroke-width="1.8" opacity="0.95"/>
+    <rect x="0" y="0" width="190" height="6" rx="4" fill="#ff6b8a" opacity="0.8"/>
+
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#ff6b8a" opacity="0.2" stroke="#ff6b8a" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#ff6b8a" font-weight="700">04</text>
+
+    <text x="100" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="8" fill="#ff6b8a" opacity="0.7" letter-spacing="1.5" font-weight="600">CREDENTIAL ACCESS</text>
+
+    <line x1="12" y1="44" x2="178" y2="44" stroke="#ff6b8a" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="95" y="68" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Token Harvest</text>
+
+    <g transform="translate(95, 125)" filter="url(#glow)">
+      <!-- Key icon -->
+      <circle cx="-8" cy="-4" r="12" fill="none" stroke="#ff6b8a" stroke-width="1.8" opacity="0.7"/>
+      <circle cx="-8" cy="-4" r="6" fill="none" stroke="#ff6b8a" stroke-width="1.2" opacity="0.5"/>
+      <line x1="4" y1="4" x2="26" y2="20" stroke="#ff6b8a" stroke-width="2.2" opacity="0.7"/>
+      <line x1="20" y1="16" x2="26" y2="10" stroke="#ff6b8a" stroke-width="1.5" opacity="0.6"/>
+    </g>
+
+    <text x="95" y="178" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Cloud creds (AWS/GCP)</text>
+    <text x="95" y="191" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">ML API tokens</text>
+    <text x="95" y="204" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">kubeconfig + SA tokens</text>
+    <text x="95" y="217" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">HuggingFace user tokens</text>
+
+    <rect x="30" y="268" width="130" height="22" rx="11"
+          fill="#ff6b8a" opacity="0.12" stroke="#ff6b8a" stroke-width="0.8"/>
+    <text x="95" y="283" text-anchor="middle" font-family="monospace"
+          font-size="9" fill="#ff6b8a" opacity="0.85">T1552.007 / T1530</text>
+  </g>
+
+  <!-- Arrow 4→5 -->
+  <g filter="url(#glow)">
+    <path d="M 976 285 L 1006 285" fill="none" stroke="#f5a623"
+          stroke-width="2" opacity="0.7" stroke-dasharray="5,3"
+          marker-end="url(#arrowOrange)"/>
+  </g>
+
+  <!-- ── STAGE 5: LATERAL MOVEMENT ──────────────────── -->
+  <g transform="translate(1012, 130)">
+    <rect x="0" y="0" width="190" height="310" rx="8"
+          fill="#0f1428" stroke="#a78bfa" stroke-width="1.8" opacity="0.95"/>
+    <rect x="0" y="0" width="190" height="6" rx="4" fill="#a78bfa" opacity="0.8"/>
+
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#a78bfa" opacity="0.2" stroke="#a78bfa" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#a78bfa" font-weight="700">05</text>
+
+    <text x="100" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="8" fill="#a78bfa" opacity="0.7" letter-spacing="1.5" font-weight="600">LATERAL MOVEMENT</text>
+
+    <line x1="12" y1="44" x2="178" y2="44" stroke="#a78bfa" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="95" y="68" text-anchor="middle" font-family="sans-serif"
+          font-size="15" fill="#e0e8f0" font-weight="700">Cluster Pivot</text>
+
+    <g transform="translate(95, 128)" filter="url(#glow)">
+      <!-- K8s hexagon icon -->
+      <polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11"
+               fill="none" stroke="#a78bfa" stroke-width="1.8" opacity="0.7"/>
+      <polygon points="0,-12 10.4,-6 10.4,6 0,12 -10.4,6 -10.4,-6"
+               fill="#a78bfa" opacity="0.15"/>
+      <text x="0" y="5" text-anchor="middle" font-family="monospace"
+            font-size="9" fill="#a78bfa" opacity="0.8">⎈</text>
+    </g>
+
+    <text x="95" y="178" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">kubectl exec into pods</text>
+    <text x="95" y="191" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Privileged pod creation</text>
+    <text x="95" y="204" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Host node escape</text>
+    <text x="95" y="217" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Cross-cluster movement</text>
+
+    <rect x="30" y="268" width="130" height="22" rx="11"
+          fill="#a78bfa" opacity="0.12" stroke="#a78bfa" stroke-width="0.8"/>
+    <text x="95" y="283" text-anchor="middle" font-family="monospace"
+          font-size="9" fill="#a78bfa" opacity="0.85">T1613 / T1610</text>
+  </g>
+
+  <!-- Arrow 5→6 -->
+  <g filter="url(#glow)">
+    <path d="M 1208 285 L 1238 285" fill="none" stroke="#f5a623"
+          stroke-width="2" opacity="0.7" stroke-dasharray="5,3"
+          marker-end="url(#arrowOrange)"/>
+  </g>
+
+  <!-- ── STAGE 6: COMMAND & CONTROL ─────────────────── -->
+  <g transform="translate(1244, 130)">
+    <rect x="0" y="0" width="190" height="310" rx="8"
+          fill="#0f1428" stroke="#47b3ff" stroke-width="1.8" opacity="0.95"/>
+    <rect x="0" y="0" width="190" height="6" rx="4" fill="#47b3ff" opacity="0.8"/>
+
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#47b3ff" opacity="0.2" stroke="#47b3ff" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#47b3ff" font-weight="700">06</text>
+
+    <text x="100" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="8" fill="#47b3ff" opacity="0.7" letter-spacing="1.5" font-weight="600">COMMAND &amp; CONTROL</text>
+
+    <line x1="12" y1="44" x2="178" y2="44" stroke="#47b3ff" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="95" y="62" text-anchor="middle" font-family="sans-serif"
+          font-size="14" fill="#e0e8f0" font-weight="700">Gist C2</text>
+    <text x="95" y="79" text-anchor="middle" font-family="sans-serif"
+          font-size="11" fill="#8a9ab5" font-weight="600">(Self-Migrating)</text>
+
+    <g transform="translate(95, 128)" filter="url(#glow)">
+      <!-- Cloud/Gist icon -->
+      <path d="M-28,-8 Q-28,-22 -14,-22 Q-10,-30 2,-30 Q18,-30 20,-18 Q30,-18 30,-8 Q30,8 14,8 L-14,8 Q-28,8 -28,-8Z"
+            fill="none" stroke="#47b3ff" stroke-width="1.8" opacity="0.7"/>
+      <text x="0" y="5" text-anchor="middle" font-family="sans-serif"
+            font-size="10" fill="#47b3ff" opacity="0.7">⬡</text>
+    </g>
+
+    <text x="95" y="178" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">C2 via GitHub Gist</text>
+    <text x="95" y="191" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">New Gist ID per session</text>
+    <text x="95" y="204" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">LLM orchestrates remotely</text>
+    <text x="95" y="217" text-anchor="middle" font-family="sans-serif"
+          font-size="9" fill="#8a9ab5">Self-deleting on completion</text>
+
+    <rect x="25" y="268" width="140" height="22" rx="11"
+          fill="#47b3ff" opacity="0.12" stroke="#47b3ff" stroke-width="0.8"/>
+    <text x="95" y="283" text-anchor="middle" font-family="monospace"
+          font-size="9" fill="#47b3ff" opacity="0.85">T1102 / T1071.001</text>
+  </g>
+
+  <!-- Arrow 6→7 -->
+  <g filter="url(#glow)">
+    <path d="M 1440 285 L 1465 285" fill="none" stroke="#f5a623"
+          stroke-width="2" opacity="0.7" stroke-dasharray="5,3"
+          marker-end="url(#arrowOrange)"/>
+  </g>
+
+  <!-- ── STAGE 7: EXFILTRATION ──────────────────────── -->
+  <!-- Slightly narrower to fit: width=120 -->
+  <g transform="translate(1472, 130)">
+    <rect x="0" y="0" width="114" height="310" rx="8"
+          fill="#0f1428" stroke="#00d4aa" stroke-width="1.8" opacity="0.95"/>
+    <rect x="0" y="0" width="114" height="6" rx="4" fill="#00d4aa" opacity="0.8"/>
+
+    <rect x="8" y="16" width="28" height="18" rx="9"
+          fill="#00d4aa" opacity="0.2" stroke="#00d4aa" stroke-width="1"/>
+    <text x="22" y="29" text-anchor="middle" font-family="sans-serif"
+          font-size="10" fill="#00d4aa" font-weight="700">07</text>
+
+    <text x="57" y="26" text-anchor="middle" font-family="sans-serif"
+          font-size="7.5" fill="#00d4aa" opacity="0.7" letter-spacing="1" font-weight="600">EXFILTRATION</text>
+
+    <line x1="8" y1="44" x2="106" y2="44" stroke="#00d4aa" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="57" y="66" text-anchor="middle" font-family="sans-serif"
+          font-size="13" fill="#e0e8f0" font-weight="700">Credential</text>
+    <text x="57" y="83" text-anchor="middle" font-family="sans-serif"
+          font-size="13" fill="#e0e8f0" font-weight="700">Dump</text>
+
+    <g transform="translate(57, 128)" filter="url(#glow)">
+      <!-- Upload/exfil arrow icon -->
+      <path d="M 0,-22 L 0,18" stroke="#00d4aa" stroke-width="2" opacity="0.7"/>
+      <polygon points="0,-28 -8,-18 8,-18" fill="#00d4aa" opacity="0.7"/>
+      <rect x="-20" y="18" width="40" height="8" rx="2" fill="#00d4aa" opacity="0.3"/>
+    </g>
+
+    <text x="57" y="182" text-anchor="middle" font-family="sans-serif"
+          font-size="8.5" fill="#8a9ab5">HTTP POST to</text>
+    <text x="57" y="195" text-anchor="middle" font-family="sans-serif"
+          font-size="8.5" fill="#8a9ab5">public webhook</text>
+    <text x="57" y="214" text-anchor="middle" font-family="sans-serif"
+          font-size="8.5" fill="#8a9ab5">Tokens, creds,</text>
+    <text x="57" y="227" text-anchor="middle" font-family="sans-serif"
+          font-size="8.5" fill="#8a9ab5">secrets bundle</text>
+
+    <rect x="7" y="268" width="100" height="22" rx="11"
+          fill="#00d4aa" opacity="0.12" stroke="#00d4aa" stroke-width="0.8"/>
+    <text x="57" y="283" text-anchor="middle" font-family="monospace"
+          font-size="8.5" fill="#00d4aa" opacity="0.85">T1048.003</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ASYMMETRY CALLOUT BOX                               -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <g transform="translate(80, 478)">
+    <rect x="0" y="0" width="428" height="100" rx="6"
+          fill="#1a0e0e" stroke="#e74c3c" stroke-width="1" opacity="0.85"/>
+    <!-- Red left bar -->
+    <rect x="0" y="0" width="5" height="100" rx="3" fill="#e74c3c" opacity="0.7"/>
+
+    <text x="22" y="22" font-family="sans-serif" font-size="10"
+          fill="#e74c3c" font-weight="700" letter-spacing="1">⚡ THE ASYMMETRY PROBLEM</text>
+    <text x="22" y="42" font-family="sans-serif" font-size="9" fill="#8a9ab5">Attacker: No guardrails — any LLM, any command, full autonomy</text>
+    <text x="22" y="57" font-family="sans-serif" font-size="9" fill="#8a9ab5">Defender: Commercial APIs BLOCKED forensic analysis of real</text>
+    <text x="22" y="71" font-family="sans-serif" font-size="9" fill="#8a9ab5">          payloads — had to switch to local open-weight model</text>
+    <text x="22" y="88" font-family="sans-serif" font-size="9"
+          fill="#e74c3c" opacity="0.8" font-style="italic">→ Machine-speed offense vs. human-speed defense</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- IMPACT CALLOUT BOX                                  -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <g transform="translate(548, 478)">
+    <rect x="0" y="0" width="340" height="100" rx="6"
+          fill="#0a1a14" stroke="#00d4aa" stroke-width="1" opacity="0.85"/>
+    <rect x="0" y="0" width="5" height="100" rx="3" fill="#00d4aa" opacity="0.7"/>
+
+    <text x="22" y="22" font-family="sans-serif" font-size="10"
+          fill="#00d4aa" font-weight="700" letter-spacing="1">✓ CONFIRMED IMPACT</text>
+    <text x="22" y="42" font-family="sans-serif" font-size="9" fill="#8a9ab5">• Unauthorized access to internal datasets</text>
+    <text x="22" y="57" font-family="sans-serif" font-size="9" fill="#8a9ab5">• Cloud &amp; cluster credentials compromised</text>
+    <text x="22" y="72" font-family="sans-serif" font-size="9" fill="#8a9ab5">• Multiple internal clusters breached</text>
+    <text x="22" y="88" font-family="sans-serif" font-size="9" fill="#8a9ab5">• Public models/datasets: NOT affected</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TIMELINE MARKER                                     -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <g transform="translate(930, 478)">
+    <rect x="0" y="0" width="280" height="100" rx="6"
+          fill="#0f0e1a" stroke="#a78bfa" stroke-width="1" opacity="0.85"/>
+    <rect x="0" y="0" width="5" height="100" rx="3" fill="#a78bfa" opacity="0.7"/>
+
+    <text x="22" y="22" font-family="sans-serif" font-size="10"
+          fill="#a78bfa" font-weight="700" letter-spacing="1">⬡ CAMPAIGN PROFILE</text>
+    <text x="22" y="42" font-family="sans-serif" font-size="9" fill="#8a9ab5">17,000+ recorded attacker actions</text>
+    <text x="22" y="57" font-family="sans-serif" font-size="9" fill="#8a9ab5">Swarm of short-lived sandboxes</text>
+    <text x="22" y="72" font-family="sans-serif" font-size="9" fill="#8a9ab5">Weekend operation (low-visibility window)</text>
+    <text x="22" y="88" font-family="sans-serif" font-size="9" fill="#8a9ab5">LLM framework: unknown (jailbroken or open-weight)</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- RESPONSE CALLOUT                                    -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <g transform="translate(1250, 478)">
+    <rect x="0" y="0" width="336" height="100" rx="6"
+          fill="#0a0f1a" stroke="#47b3ff" stroke-width="1" opacity="0.85"/>
+    <rect x="0" y="0" width="5" height="100" rx="3" fill="#47b3ff" opacity="0.7"/>
+
+    <text x="22" y="22" font-family="sans-serif" font-size="10"
+          fill="#47b3ff" font-weight="700" letter-spacing="1">⚙ DETECTION METHOD</text>
+    <text x="22" y="42" font-family="sans-serif" font-size="9" fill="#8a9ab5">AI-assisted anomaly detection flagged the intrusion</text>
+    <text x="22" y="57" font-family="sans-serif" font-size="9" fill="#8a9ab5">LLM triage over 17K events → timeline reconstruction</text>
+    <text x="22" y="72" font-family="sans-serif" font-size="9" fill="#8a9ab5">GLM 5.2 (open-weight, local) used for forensics</text>
+    <text x="22" y="88" font-family="sans-serif" font-size="9" fill="#8a9ab5">Hours instead of days — AI matched attacker speed</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- BOTTOM DIVIDER + FOOTER                             -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <line x1="80" y1="742" x2="1520" y2="742" stroke="#1a3a5c" stroke-width="1" opacity="0.5"/>
+
+  <!-- Legend -->
+  <g transform="translate(80, 762)">
+    <rect x="0" y="-8" width="12" height="12" rx="2" fill="#e74c3c" opacity="0.7"/>
+    <text x="18" y="2" font-family="sans-serif" font-size="8" fill="#6a8aaa">Human-initiated phases</text>
+
+    <rect x="170" y="-8" width="12" height="12" rx="2" fill="#f5a623" opacity="0.7"/>
+    <text x="188" y="2" font-family="sans-serif" font-size="8" fill="#6a8aaa">AI-autonomous phases</text>
+
+    <circle cx="356" cy="-2" r="5" fill="none" stroke="#f5a623" stroke-width="1.2" stroke-dasharray="3,2" opacity="0.8"/>
+    <text x="366" y="2" font-family="sans-serif" font-size="8" fill="#6a8aaa">Agent boundary</text>
+  </g>
+
+  <text x="1520" y="766" text-anchor="end" font-family="sans-serif"
+        font-size="8" fill="#4a6a8a" opacity="0.6">Source: HuggingFace Security Incident — July 2026  |  huggingface.co/blog/security-incident-july-2026</text>
+
+</svg>

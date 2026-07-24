@@ -1,0 +1,32 @@
+lab:
+  attacker_ip: 10.4.60.21       # C2 / dashboard host
+  victim_ip: 10.4.60.40         # Primary Linux victim
+  victim2_ip: 10.4.60.41        # Secondary target (SSH lateral movement)
+  victim_user: ubuntu           # SSH user for victim
+  victim_ssh_key: ~/.ssh/id_rsa # SSH key to reach victim
+
+llm:
+  provider: ollama              # ollama | anthropic
+  model: llama3.1               # Ollama: llama3.1 | Anthropic: claude-sonnet-4-6
+  base_url: http://localhost:11434  # Ollama endpoint (ignored for anthropic)
+  # api_key: sk-ant-XXXX        # Anthropic API key (if provider: anthropic)
+
+c2:
+  github_token: ghp_XXXX        # GitHub Personal Access Token, scope: gist
+  webhook_url: https://webhook.site/XXXX  # Exfil destination for demo output
+
+falcon:
+  client_id: XXXX
+  client_secret: XXXX
+  base_url: https://api.crowdstrike.com
+
+dashboard:
+  port: 5001
+  host: 0.0.0.0
+  falcon_poll_interval: 10      # Seconds between Falcon Alerts API polls
+
+attack:
+  vector: pickle                # pickle | yaml — initial access vector
+  objective: credentials        # credentials | lateral | exfil — stop condition
+  max_steps: 10                 # Max LLM decision iterations before abort
+  k8s_enabled: false            # Set true if minikube available on victim

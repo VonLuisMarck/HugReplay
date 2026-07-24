@@ -1,0 +1,269 @@
+/* Phantom Pipeline Dashboard — Dark Theme */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0d14;
+  --surface: #14141f;
+  --surface2: #1a1a28;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --text-muted: #666;
+  --accent: #e74c3c;
+  --green: #27ae60;
+  --orange: #f5a623;
+  --blue: #3498db;
+  --font: 'Courier New', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.logo {
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+
+.subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 16px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.badge-idle    { background: #1a1a28; color: #666; border: 1px solid #333; }
+.badge-running { background: rgba(245,166,35,0.15); color: var(--orange); border: 1px solid var(--orange); animation: blink 1.5s infinite; }
+.badge-done    { background: rgba(39,174,96,0.15); color: var(--green); border: 1px solid var(--green); }
+.badge-error   { background: rgba(231,76,60,0.15); color: var(--accent); border: 1px solid var(--accent); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes flashIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+
+#btn-start {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 3px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+#btn-start:hover { background: #c0392b; }
+#btn-start:disabled { background: #333; color: #666; cursor: default; }
+
+/* Main layout */
+main {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 320px;
+  gap: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Panels */
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+}
+.panel:last-child { border-right: none; }
+
+.panel-title {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Attack graph */
+#attack-graph-container {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+#attack-graph { width: 100%; }
+
+/* Reasoning box */
+.reasoning-box {
+  background: rgba(245,166,35,0.05);
+  border: 1px solid rgba(245,166,35,0.3);
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.reasoning-label {
+  font-size: 9px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+#reasoning-text {
+  font-size: 11px;
+  color: #ccc;
+  line-height: 1.5;
+}
+
+/* Decision log */
+.log-container {
+  flex: 1;
+  overflow-y: auto;
+}
+.log-entry {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.log-ts { color: var(--text-muted); margin-right: 6px; }
+.log-detail { color: #aaa; }
+
+/* Network map */
+.panel-center { padding: 12px; }
+#network-map-container {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex: 1;
+  min-height: 260px;
+}
+#network-map { width: 100%; height: 100%; }
+
+/* Technique info */
+.technique-box {
+  background: rgba(231,76,60,0.05);
+  border: 1px solid rgba(231,76,60,0.25);
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 10px;
+}
+.technique-mitre {
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+.technique-name {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 3px;
+}
+.technique-detection {
+  font-size: 10px;
+  color: var(--orange);
+  margin-top: 3px;
+}
+
+/* Detections */
+.detections-container {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+.detection-card {
+  background: var(--surface2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 3px 3px 0;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  animation: flashIn 0.4s ease;
+}
+.det-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.det-severity { font-size: 10px; font-weight: bold; letter-spacing: 1px; }
+.det-technique { font-size: 10px; color: #aaa; }
+.det-ts { font-size: 9px; color: var(--text-muted); }
+.det-desc { font-size: 11px; color: #ccc; line-height: 1.4; }
+.det-host { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+
+.count-badge {
+  background: var(--accent);
+  color: white;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+.stat-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  text-align: center;
+}
+.stat-label { font-size: 8px; color: var(--text-muted); letter-spacing: 1px; }
+.stat-value { font-size: 20px; font-weight: bold; color: var(--text); margin-top: 2px; }
+
+/* Credentials */
+.creds-container { overflow-y: auto; max-height: 120px; }
+.cred-item {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  animation: flashIn 0.3s ease;
+}
+.cred-type { color: var(--accent); font-weight: bold; }
+.cred-via { color: var(--text-muted); margin-left: 6px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+.hidden { display: none !important; }

@@ -1,0 +1,18 @@
+# Core
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-ollama>=0.2.0
+langchain-anthropic>=0.3.0
+
+# Web / Dashboard
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# HTTP / Networking
+requests>=2.32.0
+pyyaml>=6.0.1
+paramiko>=3.4.0       # SSH execution on victim
+
+# Falcon API (reutilizar desde Falcon Forge)
+crowdstrike-falconpy>=1.4.0
