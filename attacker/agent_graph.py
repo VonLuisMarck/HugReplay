@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import os
 import queue
 import time
 import uuid
@@ -124,10 +125,13 @@ def run(
     print(f"{'='*60}\n")
 
     # Build infrastructure objects
+    key_path = lab.get("victim_ssh_key") or None
+    if key_path:
+        key_path = os.path.expanduser(key_path)
     shell = VictimShell(
         host=target,
         user=lab.get("victim_user", "ubuntu"),
-        key_path=lab.get("victim_ssh_key") or None,
+        key_path=key_path,
         password=lab.get("victim_password") or None,
     )
     shell.connect()
