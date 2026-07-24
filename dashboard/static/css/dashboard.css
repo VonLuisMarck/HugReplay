@@ -90,7 +90,7 @@ header {
 /* Main layout */
 main {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 320px;
+  grid-template-columns: 1fr 1.6fr;
   gap: 0;
   flex: 1;
   overflow: hidden;

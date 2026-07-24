@@ -162,13 +162,8 @@ if __name__ == "__main__":
     if os.path.exists(config_path):
         with open(config_path) as f:
             cfg = yaml.safe_load(f)
-        falcon_thread = threading.Thread(
-            target=_poll_falcon, args=(config_path,), daemon=True
-        )
-        falcon_thread.start()
     else:
-        print("[Dashboard] config.yaml not found — running with defaults (Falcon polling disabled)")
-        print("[Dashboard] Copy config.example.yaml to config.yaml to enable Falcon detections")
+        print("[Dashboard] config.yaml not found — running with defaults")
         cfg = {}
 
     host = cfg.get("dashboard", {}).get("host", "0.0.0.0")

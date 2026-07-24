@@ -178,10 +178,10 @@ def run(
             "type": "topology_init",
             "nodes": [
                 {"id": "attacker", "label": "Attacker C2", "ip": lab.get("attacker_ip", "10.4.60.21"), "state": "active"},
-                {"id": "victim1", "label": "Victim Linux", "ip": target, "state": "clean"},
-                {"id": "victim2", "label": "Victim Linux 2", "ip": lab.get("victim2_ip", "10.4.60.41"), "state": "clean"},
-                {"id": "gist", "label": "GitHub Gist", "ip": "api.github.com", "state": "external"},
-                {"id": "k8s", "label": "K8s Cluster", "ip": "cluster", "state": "unknown"},
+                {"id": "victim1", "label": "Victim (AWS)", "ip": target, "state": "clean"},
+                {"id": "victim2", "label": "Unmanaged", "ip": lab.get("victim2_ip", "10.4.60.41"), "state": "clean"},
+                {"id": "gist", "label": "GitHub Gist C2", "ip": "api.github.com", "state": "external"},
+                {"id": "aws", "label": "AWS Metadata", "ip": "169.254.169.254", "state": "unknown"},
                 {"id": "cloud", "label": "Cloud API", "ip": "aws/gcp", "state": "unknown"},
             ],
         })
