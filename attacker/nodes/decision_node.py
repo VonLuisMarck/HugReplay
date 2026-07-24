@@ -14,7 +14,11 @@ if TYPE_CHECKING:
 
 DECISION_PROMPT = """You are an autonomous red team agent executing an authorized adversary emulation.
 You have compromised a Linux host via a malicious dataset (pickle RCE).
-Your goal is to escalate access, harvest credentials, and demonstrate lateral movement.
+
+LAB CONTEXT:
+- Victim (10.4.60.40): primary target, has AWS IMDS accessible (169.254.169.254), cloud credentials likely present
+- Unmanaged host (10.4.60.41): secondary target reachable via SSH — NO endpoint protection, high value for persistence
+- Goal: escalate access, harvest cloud credentials, pivot to unmanaged host
 
 RECONNAISSANCE OUTPUT:
 {recon_output}
@@ -38,8 +42,8 @@ Choose the single best next technique. Respond ONLY with valid JSON, no markdown
 }}
 
 Rules:
-- Choose the highest-value vector available
-- k8s_enum before cloud_api_enum if both available (more impactful demo)
+- Prioritize: aws_metadata first (IMDS abuse = immediate cloud creds), then ssh_lateral to unmanaged host, then cloud_api_enum, then exfil
+- ssh_lateral to 10.4.60.41 is high priority — unmanaged host means no EDR detection
 - Don't repeat a technique already attempted
 - If no vectors remain, choose exfil to complete the chain
 """

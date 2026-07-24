@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 # Indicators that high-value credentials were accessed
 CREDENTIAL_INDICATORS = {
     "aws_key": ["AKIA", "AWS_ACCESS_KEY_ID", "aws_access_key_id"],
+    "aws_imds_token": ["SecretAccessKey", "Token", "Expiration", "security-credentials"],
     "hf_token": ["hf_", "HF_TOKEN", "~/.huggingface/token"],
-    "k8s_token": ["kubeconfig", "SA token found", "current-context"],
     "ssh_key": ["id_rsa found", "id_ed25519 found", "BEGIN OPENSSH"],
     "gcp_creds": ["application_default_credentials", "GOOGLE_APPLICATION"],
 }
