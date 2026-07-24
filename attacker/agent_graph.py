@@ -127,7 +127,8 @@ def run(
     shell = VictimShell(
         host=target,
         user=lab.get("victim_user", "ubuntu"),
-        key_path=lab.get("victim_ssh_key", "~/.ssh/id_rsa"),
+        key_path=lab.get("victim_ssh_key") or None,
+        password=lab.get("victim_password") or None,
     )
     shell.connect()
 

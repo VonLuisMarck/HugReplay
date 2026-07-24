@@ -13,23 +13,36 @@ from typing import Optional
 class VictimShell:
     """SSH session to victim for command execution."""
 
-    def __init__(self, host: str, user: str, key_path: str, timeout: int = 30):
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        key_path: Optional[str] = None,
+        password: Optional[str] = None,
+        timeout: int = 30,
+    ):
         self.host = host
         self.user = user
         self.key_path = key_path
+        self.password = password
         self.timeout = timeout
         self._client: Optional[paramiko.SSHClient] = None
 
     def connect(self) -> None:
         self._client = paramiko.SSHClient()
         self._client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self._client.connect(
-            hostname=self.host,
-            username=self.user,
-            key_filename=self.key_path,
-            timeout=10,
-        )
-        print(f"[Shell] Connected to {self.user}@{self.host}")
+
+        connect_kwargs: dict = {"hostname": self.host, "username": self.user, "timeout": 10}
+        if self.password:
+            connect_kwargs["password"] = self.password
+        elif self.key_path:
+            connect_kwargs["key_filename"] = self.key_path
+        else:
+            raise ValueError("VictimShell requires either password or key_path")
+
+        self._client.connect(**connect_kwargs)
+        auth = "password" if self.password else "key"
+        print(f"[Shell] Connected to {self.user}@{self.host} (auth: {auth})")
 
     def run(self, command: str) -> dict:
         """Execute command on victim, return {stdout, stderr, returncode}."""

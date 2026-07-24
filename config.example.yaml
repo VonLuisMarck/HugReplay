@@ -3,7 +3,8 @@ lab:
   victim_ip: 10.4.60.40         # Primary Linux victim
   victim2_ip: 10.4.60.41        # Secondary target (SSH lateral movement)
   victim_user: ubuntu           # SSH user for victim
-  victim_ssh_key: ~/.ssh/id_rsa # SSH key to reach victim
+  victim_ssh_key: ~/.ssh/id_rsa # SSH key to reach victim (leave blank to use password)
+  victim_password:              # SSH password (leave blank to use key). victim2 creds: samba/password123
 
 llm:
   provider: ollama              # ollama | anthropic
