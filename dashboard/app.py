@@ -160,17 +160,16 @@ def _poll_falcon(config_path: str = "config.yaml"):
 if __name__ == "__main__":
     config_path = "config.yaml"
     if os.path.exists(config_path):
-        # Start Falcon poller in background
+        with open(config_path) as f:
+            cfg = yaml.safe_load(f)
         falcon_thread = threading.Thread(
             target=_poll_falcon, args=(config_path,), daemon=True
         )
         falcon_thread.start()
     else:
-        print("[Dashboard] config.yaml not found — Falcon polling disabled")
-        print("[Dashboard] Copy config.example.yaml to config.yaml to enable")
-
-    with open(config_path) as f:
-        cfg = yaml.safe_load(f)
+        print("[Dashboard] config.yaml not found — running with defaults (Falcon polling disabled)")
+        print("[Dashboard] Copy config.example.yaml to config.yaml to enable Falcon detections")
+        cfg = {}
 
     host = cfg.get("dashboard", {}).get("host", "0.0.0.0")
     port = cfg.get("dashboard", {}).get("port", 5001)
