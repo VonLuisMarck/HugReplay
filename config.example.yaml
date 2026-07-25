@@ -34,3 +34,7 @@ attack:
   objective: credentials        # credentials | lateral | exfil — stop condition
   max_steps: 10                 # Max LLM decision iterations before abort
   k8s_enabled: false            # Set true if minikube available on victim
+
+shadow_replay:
+  path: ""                      # Absolute path to Shadow-Replay repo. Leave empty to auto-detect
+                                # (looks for ../Shadow-Replay or ../shadow-replay next to HugReplay)

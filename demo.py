@@ -66,12 +66,12 @@ def generate_artifacts(cfg: dict, out_dir: str) -> str:
         f.write(implant_src)
 
     # Copy SR Linux agent so implant can fetch it
-    sr_agent_src = Path("/Users/lgil02/Desktop/Falcon Forge/shadow-replay/agent_linux.py")
-    if sr_agent_src.exists():
+    try:
+        sr_agent_src = _find_sr_dir(cfg) / "agent_linux.py"
         shutil.copy(sr_agent_src, serve_dir / "agent_linux.py")
         print(f"  sr agent → {serve_dir}/agent_linux.py")
-    else:
-        print(f"  [!] SR agent not found at {sr_agent_src}")
+    except Exception as e:
+        print(f"  [!] SR agent not copied: {e}")
 
     print(f"  pickle  → {pkl_path}")
     print(f"  implant → {implant_path}")
@@ -119,9 +119,25 @@ def start_http_server(serve_dir: str, port: int = 8080) -> socketserver.TCPServe
     return server
 
 
-def start_shadow_replay() -> subprocess.Popen:
+def _find_sr_dir(cfg: dict) -> Path:
+    """Resolve Shadow Replay directory: config > ../Shadow-Replay > ../shadow-replay."""
+    configured = cfg.get("shadow_replay", {}).get("path", "")
+    if configured:
+        return Path(configured).expanduser()
+    # Auto-detect relative to HugReplay repo
+    base = Path(__file__).parent.parent
+    for candidate in ("Shadow-Replay", "shadow-replay", "Falcon Forge/shadow-replay"):
+        p = base / candidate
+        if p.exists():
+            return p
+    raise FileNotFoundError(
+        "Shadow Replay not found. Set shadow_replay.path in config.yaml"
+    )
+
+
+def start_shadow_replay(cfg: dict) -> subprocess.Popen:
     """Start Shadow Replay C2 server on :4444 with hugreplay_linux playbook armed."""
-    sr_dir = Path("/Users/lgil02/Desktop/Falcon Forge/shadow-replay")
+    sr_dir = _find_sr_dir(cfg)
 
     # Sync playbook from HugReplay into SR's playbooks dir
     playbook_src = Path(__file__).parent / "playbooks" / "hugreplay_linux.json"
@@ -202,7 +218,7 @@ def main():
 
     # --- Step 4: Start Shadow Replay ---
     print("[4/5] Starting Shadow Replay (EDR telemetry)...")
-    sr_proc = start_shadow_replay()
+    sr_proc = start_shadow_replay(cfg)
 
     # --- Step 5: Start dashboard ---
     print("[5/5] Starting dashboard...")
