@@ -36,8 +36,12 @@ banner
 if [ -f "$CONFIG" ]; then
     _ip=$(python3 -c "import yaml; c=yaml.safe_load(open('$CONFIG')); print(c['lab']['attacker_ip'])" 2>/dev/null || true)
     if [ -n "$_ip" ]; then ATTACKER_IP="$_ip"; fi
-    ok "Read config.yaml — attacker IP: $ATTACKER_IP"
+    # attacker_host overrides attacker_ip for implant C2 callbacks (can be domain or IP)
+    _host=$(python3 -c "import yaml; c=yaml.safe_load(open('$CONFIG')); print(c['lab'].get('attacker_host',''))" 2>/dev/null || true)
+    if [ -n "$_host" ]; then ATTACKER_HOST="$_host"; else ATTACKER_HOST="$ATTACKER_IP"; fi
+    ok "Read config.yaml — attacker IP: $ATTACKER_IP  C2 host: $ATTACKER_HOST"
 else
+    ATTACKER_HOST="$ATTACKER_IP"
     warn "config.yaml not found — using default attacker IP: $ATTACKER_IP"
     warn "Set ATTACKER_IP=x.x.x.x to override: ATTACKER_IP=1.2.3.4 bash setup_demo.sh"
 fi
@@ -62,7 +66,7 @@ import sys
 sys.path.insert(0, '.')
 from attacker.techniques.dataset_poison import generate_pickle, generate_yaml, generate_implant
 
-ip = "$ATTACKER_IP"
+ip = "$ATTACKER_HOST"
 port = $ATTACKER_PORT
 out = "$OUT_DIR"
 

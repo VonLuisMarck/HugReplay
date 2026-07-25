@@ -1,5 +1,7 @@
 lab:
-  attacker_ip: 10.4.60.21       # C2 / dashboard host
+  attacker_ip: 10.4.60.21       # C2 / dashboard host (used for SSH, dashboard binding)
+  attacker_host: ""              # Optional: domain/IP for implant C2 callbacks (e.g. c2.example.com)
+                                 # If empty, attacker_ip is used
   victim_ip: 10.4.60.40         # Primary Linux victim
   victim2_ip: 10.4.60.41        # Secondary target (SSH lateral movement)
   victim_user: ubuntu           # SSH user for victim

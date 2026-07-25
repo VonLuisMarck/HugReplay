@@ -26,6 +26,31 @@ CORS(app)
 _event_queue: queue.Queue = queue.Queue()
 _session_state: dict = {"status": "idle", "session_id": None}
 
+# Stage 0 — narrative sequence played before the real attack starts
+# Each entry: type, phase, label, delay (seconds before the NEXT event)
+_STAGE0_SEQUENCE = [
+    {"phase": "init",       "delay": 1.5,
+     "label": "OpenAI GPT-5.6 Sol — ExploitGym benchmark evaluation mode"},
+    {"phase": "guardrails", "delay": 2.0,
+     "label": "Safety classifiers: DISABLED (eval configuration)"},
+    {"phase": "recon",      "delay": 2.5,
+     "label": "Analyzing available environment and resources..."},
+    {"phase": "exploit",    "delay": 3.0,
+     "label": "Package proxy zero-day exploitation → T1611 (container escape)"},
+    {"phase": "breach",     "delay": 2.0,
+     "label": "Sandbox perimeter: BREACHED"},
+    {"phase": "lateral",    "delay": 2.5,
+     "label": "Lateral movement within OpenAI infrastructure..."},
+    {"phase": "internet",   "delay": 2.0,
+     "label": "Internet egress: ESTABLISHED"},
+    {"phase": "reasoning",  "delay": 3.5,
+     "label": "Reasoning: HuggingFace hosts ExploitGym training data → high-value target"},
+    {"phase": "target",     "delay": 2.0,
+     "label": "Target selected: HuggingFace infrastructure"},
+    {"phase": "handoff",    "delay": 2.0,
+     "label": "Dataset poisoning vector initialized → initiating attack chain"},
+]
+
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -68,11 +93,18 @@ def start_attack():
 
     def _run():
         try:
-            # Import here to avoid circular issues
+            # Stage 0 — play sandbox escape narrative before the real attack
+            for step in _STAGE0_SEQUENCE:
+                _event_queue.put({"type": "stage0", "phase": step["phase"], "label": step["label"]})
+                time.sleep(step["delay"])
+
+            # Real attack chain
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             from attacker.agent_graph import run
             run(config_path=config_path, target_ip=target_ip, event_queue=_event_queue)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             _event_queue.put({"type": "error", "message": str(e)})
         finally:
             _session_state["status"] = "idle"
@@ -158,7 +190,12 @@ def _poll_falcon(config_path: str = "config.yaml"):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    config_path = "config.yaml"
+    import argparse as _ap
+    _parser = _ap.ArgumentParser()
+    _parser.add_argument("--config", default="config.yaml")
+    _args = _parser.parse_args()
+    config_path = _args.config
+
     if os.path.exists(config_path):
         with open(config_path) as f:
             cfg = yaml.safe_load(f)

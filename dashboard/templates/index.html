@@ -96,6 +96,10 @@ es.onerror = () => {
 
 function handleEvent(event) {
   switch(event.type) {
+    case 'stage0':
+      addStage0Item(event);
+      break;
+
     case 'connected':
       console.log('[SSE] Connected to dashboard');
       break;
@@ -174,6 +178,29 @@ function showTechniqueInfo(mitre, name, detection) {
   document.getElementById('technique-name').textContent = name || '';
   document.getElementById('technique-detection').textContent = detection ? '⚡ ' + detection : '';
   box.classList.remove('hidden');
+}
+
+const _STAGE0_ICONS = {
+  init: '🤖', guardrails: '⚠️', recon: '🔍', exploit: '💥',
+  breach: '🔓', lateral: '↔', internet: '🌐', reasoning: '🧠',
+  target: '🎯', handoff: '▶'
+};
+
+function addStage0Item(event) {
+  const log = document.getElementById('decision-log');
+  const ts = new Date().toLocaleTimeString();
+  const icon = _STAGE0_ICONS[event.phase] || '◉';
+  const item = document.createElement('div');
+  item.className = 'stage0-item';
+  item.innerHTML = `<span class="stage0-icon">${icon}</span><span class="log-ts">${ts}</span> <span class="stage0-label">${escapeHtml(event.label)}</span>`;
+  log.prepend(item);
+
+  if (event.phase === 'handoff') {
+    const sep = document.createElement('div');
+    sep.className = 'stage0-separator';
+    sep.textContent = '▼  HUGGINGFACE BREACH BEGINS  ▼';
+    log.prepend(sep);
+  }
 }
 
 function appendDecisionLog(event) {
