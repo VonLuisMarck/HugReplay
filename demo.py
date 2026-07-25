@@ -86,7 +86,7 @@ def scp_to_victim(cfg: dict, local_path: str, remote_path: str = "/tmp/imagenet_
         password=lab.get("victim_password") or None,
     )
     shell.connect()
-    sftp = shell.client.open_sftp()
+    sftp = shell._client.open_sftp()
     sftp.put(local_path, remote_path)
     sftp.close()
     shell.disconnect()
