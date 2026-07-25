@@ -161,6 +161,36 @@ def start_shadow_replay(cfg: dict) -> subprocess.Popen:
     )
     time.sleep(2)
     print(f"  shadow replay on :4444  →  {sr_dir}")
+
+    # SR auto_start_monitor only fires on Windows agents — trigger manually via API
+    # so the playbook starts as soon as the Linux agent connects
+    def _trigger_sr_autostart():
+        import urllib.request as _req
+        import json as _json
+        for attempt in range(24):   # retry for up to 2 min
+            time.sleep(5)
+            try:
+                body = _json.dumps({"playbook_id": "hugreplay_linux"}).encode()
+                r = _req.urlopen(
+                    _req.Request(
+                        "http://127.0.0.1:4444/playbook/auto_start",
+                        data=body,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    ),
+                    timeout=5,
+                )
+                resp = _json.loads(r.read())
+                if resp.get("status") == "success":
+                    print("[SR] Playbook auto_start triggered successfully")
+                    return
+                # agent not connected yet — keep retrying
+            except Exception:
+                pass
+        print("[SR] Warning: could not trigger auto_start after 2 min")
+
+    threading.Thread(target=_trigger_sr_autostart, daemon=True).start()
+
     return proc
 
 
