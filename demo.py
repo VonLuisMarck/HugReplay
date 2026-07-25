@@ -162,34 +162,51 @@ def start_shadow_replay(cfg: dict) -> subprocess.Popen:
     time.sleep(2)
     print(f"  shadow replay on :4444  →  {sr_dir}")
 
-    # SR auto_start_monitor only fires on Windows agents — trigger manually via API
-    # so the playbook starts as soon as the Linux agent connects
-    def _trigger_sr_autostart():
+    # SR auto_start_monitor only fires for Windows agents.
+    # Poll /agents until a Linux agent appears, then start the playbook explicitly.
+    def _trigger_sr_start():
         import urllib.request as _req
         import json as _json
-        for attempt in range(24):   # retry for up to 2 min
+        SR = "http://127.0.0.1:4444"
+        for attempt in range(48):   # retry for up to 4 min
             time.sleep(5)
             try:
-                body = _json.dumps({"playbook_id": "hugreplay_linux"}).encode()
-                r = _req.urlopen(
+                # 1. Find a connected Linux agent
+                r = _req.urlopen(f"{SR}/agents", timeout=5)
+                all_agents = _json.loads(r.read())
+                linux_id = next(
+                    (aid for aid, info in all_agents.items()
+                     if info.get("agent_type") == "linux"),
+                    None,
+                )
+                if not linux_id:
+                    continue
+
+                # 2. Start playbook with explicit agent mapping
+                body = _json.dumps({
+                    "playbook_id": "hugreplay_linux",
+                    "agent_mapping": {"agent_1": linux_id},
+                }).encode()
+                r2 = _req.urlopen(
                     _req.Request(
-                        "http://127.0.0.1:4444/playbook/auto_start",
+                        f"{SR}/playbook/start",
                         data=body,
                         headers={"Content-Type": "application/json"},
                         method="POST",
                     ),
                     timeout=5,
                 )
-                resp = _json.loads(r.read())
-                if resp.get("status") == "success":
-                    print("[SR] Playbook auto_start triggered successfully")
+                resp = _json.loads(r2.read())
+                if resp.get("status") in ("success", "playbook_started"):
+                    print(f"[SR] Playbook started — agent {linux_id}")
                     return
-                # agent not connected yet — keep retrying
+                print(f"[SR] /playbook/start returned: {resp}")
+                return
             except Exception:
                 pass
-        print("[SR] Warning: could not trigger auto_start after 2 min")
+        print("[SR] Warning: could not start playbook after 4 min")
 
-    threading.Thread(target=_trigger_sr_autostart, daemon=True).start()
+    threading.Thread(target=_trigger_sr_start, daemon=True).start()
 
     return proc
 
