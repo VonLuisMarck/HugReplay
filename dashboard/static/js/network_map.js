@@ -1,54 +1,62 @@
 /**
- * Network Map — D3.js force-directed topology visualization
- *
- * Shows lab nodes and animates attack flows between them.
- * Icons use FontAwesome 6 Free unicode codepoints (requires FA loaded in page).
+ * Network Map — fixed-position topology visualization
+ * Dark ops aesthetic: glow nodes, animated dashed links, FA icons.
  */
 
-let svgMap, simulation, mapNodes, mapLinks;
-const nodeStates = {};   // id → state
-const nodeElements2 = {}; // id → D3 selection
+let svgMap, mapNodes, mapLinks;
+const nodeStates = {};
 
-// FontAwesome 6 Free (solid / brands) unicode codepoints
+// FontAwesome 6 codepoints
 const NODE_ICONS = {
-  attacker: "\uf54c",  // fa-skull-crossbones  (solid)
-  victim1:  "\uf233",  // fa-server            (solid)
-  victim2:  "\uf233",  // fa-server            (solid)
-  gist:     "\uf09b",  // fa-github            (brands)
-  aws:      "\uf0c2",  // fa-cloud             (solid)
-  cloud:    "\uf0c2",  // fa-cloud             (solid)
-  k8s:      "\uf3e2",  // fa-dharmachakra (wheel) — closest to k8s (solid)
+  attacker: "\uf54c",   // skull-crossbones (solid)
+  victim1:  "\uf233",   // server (solid)
+  victim2:  "\uf233",   // server (solid)
+  gist:     "\uf09b",   // github (brands)
+  aws:      "\uf0c2",   // cloud (solid)
+  cloud:    "\uf0c2",   // cloud (solid)
 };
-
-// FontAwesome font-family per node (brands vs solid)
-const NODE_ICON_FAMILY = {
-  gist: "'Font Awesome 6 Brands'",
-};
+const NODE_ICON_FAMILY = { gist: "'Font Awesome 6 Brands'" };
 
 const NODE_STATE_COLORS = {
   active:      "#e74c3c",
-  clean:       "#2ecc71",
+  clean:       "#00ff88",
   compromised: "#e74c3c",
-  external:    "#4aa3df",
-  unknown:     "#555570",
+  external:    "#00b4ff",
+  unknown:     "#444460",
+};
+
+// Fixed hub-and-spoke positions (viewBox 620x290)
+const FIXED_POSITIONS = {
+  attacker: { x: 310, y:  52 },
+  victim1:  { x: 310, y: 148 },
+  gist:     { x: 520, y:  95 },
+  victim2:  { x: 115, y: 240 },
+  cloud:    { x: 490, y: 240 },
+  aws:      { x: 310, y: 248 },
+};
+
+const LINK_COLORS = {
+  c2:       "#e74c3c",
+  ssh:      "#ff9500",
+  api:      "#00b4ff",
+  internal: "#444460",
+  attack:   "#e74c3c",
 };
 
 let topologyNodes = [];
 let topologyLinks = [];
 
 function initNetworkMap(nodes) {
-  topologyNodes = nodes.map((n, i) => ({
+  topologyNodes = nodes.map(n => ({
     ...n,
-    index: i,
-    x: 100 + (i % 3) * 200,
-    y: 80 + Math.floor(i / 3) * 160,
+    x: (FIXED_POSITIONS[n.id] || { x: 310, y: 148 }).x,
+    y: (FIXED_POSITIONS[n.id] || { x: 310, y: 148 }).y,
   }));
 
-  // Default links (lab topology)
   topologyLinks = [
     { source: "attacker", target: "victim1",  type: "c2" },
     { source: "victim1",  target: "gist",     type: "c2" },
-    { source: "victim1",  target: "k8s",      type: "internal" },
+    { source: "victim1",  target: "aws",      type: "internal" },
     { source: "victim1",  target: "victim2",  type: "ssh" },
     { source: "victim1",  target: "cloud",    type: "api" },
   ];
@@ -58,163 +66,182 @@ function initNetworkMap(nodes) {
 
 function renderMap() {
   const container = document.getElementById("network-map-container");
-  const W = container.clientWidth || 600;
+  const W = container.clientWidth || 620;
   const H = 300;
+  const VW = 620, VH = 290;
 
   d3.select("#network-map").selectAll("*").remove();
 
   svgMap = d3.select("#network-map")
     .attr("width", W).attr("height", H)
-    .attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("viewBox", `0 0 ${VW} ${VH}`)
     .attr("preserveAspectRatio", "xMidYMid meet");
 
   const defs = svgMap.append("defs");
 
-  // Drop shadow filter for nodes
-  const filter = defs.append("filter")
-    .attr("id", "node-shadow")
-    .attr("x", "-30%").attr("y", "-30%")
-    .attr("width", "160%").attr("height", "160%");
-  filter.append("feDropShadow")
-    .attr("dx", 0).attr("dy", 0)
-    .attr("stdDeviation", 4)
-    .attr("flood-color", "#000")
-    .attr("flood-opacity", 0.5);
+  // Glow filter for nodes
+  const glow = defs.append("filter").attr("id", "node-glow")
+    .attr("x", "-40%").attr("y", "-40%").attr("width", "180%").attr("height", "180%");
+  glow.append("feGaussianBlur").attr("stdDeviation", "3").attr("result", "blur");
+  const feMerge = glow.append("feMerge");
+  feMerge.append("feMergeNode").attr("in", "blur");
+  feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
-  // Arrow markers for different link types
-  const LINK_COLORS = { c2: "#e74c3c", ssh: "#f5a623", api: "#4aa3df", internal: "#555570", attack: "#e74c3c" };
-  ["c2", "ssh", "api", "internal", "attack"].forEach(t => {
+  // Red glow for compromised
+  const redGlow = defs.append("filter").attr("id", "node-glow-red")
+    .attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+  redGlow.append("feGaussianBlur").attr("stdDeviation", "5").attr("result", "blur");
+  const feMerge2 = redGlow.append("feMerge");
+  feMerge2.append("feMergeNode").attr("in", "blur");
+  feMerge2.append("feMergeNode").attr("in", "SourceGraphic");
+
+  // Arrow markers
+  Object.entries(LINK_COLORS).forEach(([t, col]) => {
     defs.append("marker")
       .attr("id", "arrow-" + t)
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 34).attr("refY", 0)
-      .attr("markerWidth", 5).attr("markerHeight", 5)
+      .attr("viewBox", "0 -4 8 8")
+      .attr("refX", 7).attr("refY", 0)
+      .attr("markerWidth", 4).attr("markerHeight", 4)
       .attr("orient", "auto")
-      .append("path").attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", LINK_COLORS[t] || "#555570");
+      .append("path").attr("d", "M0,-4L8,0L0,4")
+      .attr("fill", col);
   });
 
-  // Force simulation
-  simulation = d3.forceSimulation(topologyNodes)
-    .force("link", d3.forceLink(topologyLinks).id(d => d.id).distance(160))
-    .force("charge", d3.forceManyBody().strength(-320))
-    .force("center", d3.forceCenter(W / 2, H / 2))
-    .force("collision", d3.forceCollide(52));
+  // Subtle grid background
+  const gridG = svgMap.append("g").attr("class", "grid-bg");
+  for (let x = 0; x <= VW; x += 40) {
+    gridG.append("line")
+      .attr("x1", x).attr("y1", 0).attr("x2", x).attr("y2", VH)
+      .attr("stroke", "#0f0f20").attr("stroke-width", 0.5);
+  }
+  for (let y = 0; y <= VH; y += 40) {
+    gridG.append("line")
+      .attr("x1", 0).attr("y1", y).attr("x2", VW).attr("y2", y)
+      .attr("stroke", "#0f0f20").attr("stroke-width", 0.5);
+  }
+
+  // Resolve source/target to node objects
+  const nodeById = {};
+  topologyNodes.forEach(n => nodeById[n.id] = n);
 
   // Links
-  const link = svgMap.append("g").selectAll("line")
-    .data(topologyLinks)
-    .enter().append("line")
-    .attr("stroke", d => LINK_COLORS[d.type] || "#333")
-    .attr("stroke-width", d => d.type === "c2" ? 2 : 1.5)
-    .attr("stroke-opacity", 0.6)
-    .attr("stroke-dasharray", d => d.type === "internal" ? "4,3" : "none")
-    .attr("marker-end", d => `url(#arrow-${d.type})`);
+  topologyLinks.forEach(link => {
+    const s = nodeById[link.source];
+    const t = nodeById[link.target];
+    if (!s || !t) return;
 
-  // Node groups
+    const col = LINK_COLORS[link.type] || "#333";
+    const dashArr = link.type === "internal" ? "6,4" : link.type === "ssh" ? "4,3" : "none";
+
+    const line = svgMap.append("line")
+      .attr("class", "map-link map-link-animated")
+      .attr("x1", s.x).attr("y1", s.y)
+      .attr("x2", t.x).attr("y2", t.y)
+      .attr("stroke", col)
+      .attr("stroke-width", link.type === "c2" ? 1.5 : 1)
+      .attr("stroke-opacity", 0.5)
+      .attr("stroke-dasharray", dashArr !== "none" ? dashArr : "none")
+      .attr("marker-end", `url(#arrow-${link.type})`);
+
+    if (dashArr !== "none") line.classed("map-link-animated", true);
+
+    // Link type label
+    const mx = (s.x + t.x) / 2, my = (s.y + t.y) / 2 - 8;
+    svgMap.append("text")
+      .attr("x", mx).attr("y", my)
+      .attr("text-anchor", "middle")
+      .attr("fill", col)
+      .attr("font-size", "7px")
+      .attr("opacity", 0.6)
+      .attr("letter-spacing", "1px")
+      .text(link.type.toUpperCase());
+  });
+
+  // Nodes
   const nodeG = svgMap.append("g").selectAll(".mapnode")
     .data(topologyNodes)
     .enter().append("g")
     .attr("class", "mapnode")
-    .attr("id", d => "mapnode-" + d.id);
+    .attr("id", d => "mapnode-" + d.id)
+    .attr("transform", d => `translate(${d.x},${d.y})`);
 
-  // Outer glow ring
-  nodeG.append("circle")
-    .attr("r", 36)
-    .attr("fill", "none")
+  // Node background rect
+  nodeG.append("rect")
+    .attr("x", -42).attr("y", -26)
+    .attr("width", 84).attr("height", 52)
+    .attr("rx", 4)
+    .attr("fill", "#080812")
     .attr("stroke", d => NODE_STATE_COLORS[d.state] || NODE_STATE_COLORS.unknown)
-    .attr("stroke-width", 0.5)
-    .attr("stroke-opacity", 0.25);
+    .attr("stroke-width", 1)
+    .attr("filter", "url(#node-glow)");
 
-  // Main node circle
-  nodeG.append("circle")
-    .attr("r", 28)
-    .attr("fill", d => NODE_STATE_COLORS[d.state] || NODE_STATE_COLORS.unknown)
-    .attr("fill-opacity", 0.12)
-    .attr("stroke", d => NODE_STATE_COLORS[d.state] || NODE_STATE_COLORS.unknown)
-    .attr("stroke-width", 1.5)
-    .attr("filter", "url(#node-shadow)");
-
-  // FontAwesome icon
+  // FA icon
   nodeG.append("text")
     .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "central")
-    .attr("y", 1)
+    .attr("y", -6)
     .attr("font-family", d => NODE_ICON_FAMILY[d.id] || "'Font Awesome 6 Free'")
     .attr("font-weight", "900")
-    .attr("font-size", "18px")
+    .attr("font-size", "14px")
     .attr("fill", d => NODE_STATE_COLORS[d.state] || NODE_STATE_COLORS.unknown)
     .text(d => NODE_ICONS[d.id] || "\uf233");
 
-  // Node label
+  // Label
   nodeG.append("text")
-    .attr("text-anchor", "middle").attr("y", 44)
-    .attr("fill", "#a0a0c0").attr("font-size", "10px").attr("font-weight", "bold")
+    .attr("text-anchor", "middle").attr("y", 8)
+    .attr("fill", "#c8c8e0").attr("font-size", "9px").attr("font-weight", "700")
     .attr("letter-spacing", "0.5px")
     .text(d => d.label);
 
-  // IP address
+  // IP
   nodeG.append("text")
-    .attr("text-anchor", "middle").attr("y", 57)
-    .attr("fill", "#555570").attr("font-size", "9px")
+    .attr("text-anchor", "middle").attr("y", 19)
+    .attr("fill", "#444460").attr("font-size", "8px")
     .text(d => d.ip);
 
   // State badge
   nodeG.append("text")
     .attr("class", "state-badge")
-    .attr("text-anchor", "middle").attr("y", -36)
-    .attr("fill", "#e74c3c").attr("font-size", "8px").attr("font-weight", "bold")
+    .attr("text-anchor", "middle").attr("y", -32)
+    .attr("font-size", "7px").attr("font-weight", "700")
     .attr("letter-spacing", "1px")
+    .attr("fill", "#444460")
     .text("");
-
-  simulation.on("tick", () => {
-    link
-      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-    nodeG.attr("transform", d => `translate(${d.x},${d.y})`);
-  });
 }
 
 function animateNetworkFlow(sourceIp, targetId, technique, label, color) {
-  // Find source node by IP
   const source = topologyNodes.find(n => n.ip === sourceIp);
   const target = topologyNodes.find(n => n.id === targetId || n.ip === targetId);
-
   if (!source || !target) return;
 
   const flowColor = color || "#e74c3c";
 
-  // Draw animated flow arrow
   const path = svgMap.append("line")
     .attr("x1", source.x).attr("y1", source.y)
     .attr("x2", source.x).attr("y2", source.y)
     .attr("stroke", flowColor)
-    .attr("stroke-width", 3)
-    .attr("opacity", 0.85)
+    .attr("stroke-width", 2.5)
+    .attr("opacity", 0.9)
+    .attr("stroke-dasharray", "none")
     .attr("marker-end", "url(#arrow-attack)");
 
-  path.transition().duration(1200)
+  path.transition().duration(1000)
     .attr("x2", target.x).attr("y2", target.y)
     .on("end", () => {
-      // Mark target as compromised
       markNodeCompromised(target.ip || target.id);
-      // Fade out arrow after 3s
-      path.transition().delay(3000).duration(800).attr("opacity", 0).remove();
+      path.transition().delay(3000).duration(600).attr("opacity", 0).remove();
     });
 
-  // Add technique label
   const midX = (source.x + target.x) / 2;
-  const midY = (source.y + target.y) / 2 - 14;
+  const midY = (source.y + target.y) / 2 - 12;
   const lbl = svgMap.append("text")
     .attr("x", midX).attr("y", midY)
     .attr("text-anchor", "middle")
     .attr("fill", flowColor)
-    .attr("font-size", "9px")
-    .attr("font-weight", "bold")
-    .attr("letter-spacing", "0.5px")
+    .attr("font-size", "8px").attr("font-weight", "700")
+    .attr("letter-spacing", "1px")
     .text(technique + (label ? ` — ${label}` : ""));
 
-  lbl.transition().delay(4000).duration(500).attr("opacity", 0).remove();
+  lbl.transition().delay(3500).duration(400).attr("opacity", 0).remove();
 }
 
 function markNodeCompromised(ipOrId) {
@@ -223,19 +250,17 @@ function markNodeCompromised(ipOrId) {
 
   const g = d3.select("#mapnode-" + node.id);
 
-  g.selectAll("circle")
-    .transition().duration(400)
-    .attr("stroke", "#e74c3c");
+  g.select("rect")
+    .transition().duration(350)
+    .attr("stroke", "#e74c3c")
+    .attr("stroke-width", 2)
+    .attr("filter", "url(#node-glow-red)");
 
-  g.select("circle:nth-child(2)")
-    .transition().duration(400)
-    .attr("fill-opacity", 0.25);
-
-  g.select("text.state-badge")
-    .text("COMPROMISED")
+  g.select("text:first-of-type")  // icon
+    .transition().duration(350)
     .attr("fill", "#e74c3c");
 
-  g.select("text:nth-child(4)")  // icon text
-    .transition().duration(400)
+  g.select(".state-badge")
+    .text("COMPROMISED")
     .attr("fill", "#e74c3c");
 }
