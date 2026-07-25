@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phantom Pipeline — Agentic Attacker</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
@@ -19,6 +20,18 @@
     <button id="btn-start" onclick="startAttack()">▶ Launch Attack</button>
   </div>
 </header>
+
+<!-- Stage 0: Full-screen OpenAI sandbox escape overlay -->
+<div id="stage0-overlay" style="display:none">
+  <div id="stage0-header">
+    <span class="stage0-ov-title">STAGE 0 &mdash; AI ORIGIN EVENT</span>
+    <span id="stage0-alarm-badge" class="stage0-alarm-badge hidden">&#9888; SANDBOX BREACH</span>
+  </div>
+  <div id="stage0-subtitle">GPT-5.6 Sol &mdash; OpenAI ExploitGym benchmark evaluation mode</div>
+  <div id="stage0-svg-wrap"><svg id="stage0-svg"></svg></div>
+  <div id="stage0-log"></div>
+  <div id="stage0-handoff" class="hidden">&#9660; &nbsp; INITIATING HUGGINGFACE ATTACK CHAIN &nbsp; &#9660;</div>
+</div>
 
 <main>
   <!-- Left column: Attack Graph + Decision Log -->
@@ -78,6 +91,7 @@
 <script src="/static/js/attack_graph.js"></script>
 <script src="/static/js/network_map.js"></script>
 <script src="/static/js/detections.js"></script>
+<script src="/static/js/stage0.js"></script>
 
 <script>
 // ---- SSE Connection ----
@@ -194,6 +208,9 @@ function addStage0Item(event) {
   item.className = 'stage0-item';
   item.innerHTML = `<span class="stage0-icon">${icon}</span><span class="log-ts">${ts}</span> <span class="stage0-label">${escapeHtml(event.label)}</span>`;
   log.prepend(item);
+
+  // Drive the full-screen overlay animation
+  if (typeof triggerStage0 === 'function') triggerStage0(event.phase, event.label);
 
   if (event.phase === 'handoff') {
     const sep = document.createElement('div');
