@@ -37,6 +37,7 @@ dashboard/app.py          → Real-time visualization of agent decisions + Falco
 - [Ollama](https://ollama.ai) with `llama3.1` pulled: `ollama pull llama3.1`
   - Or Anthropic API key (set `llm.provider: anthropic` in config)
 - Lab access: victim Linux at `10.4.60.40`, SSH key configured
+- Attacker host reachable from victim on `attacker_port` (default `8080`) — victim downloads `implant.py` over HTTP
 - **GitHub Personal Access Token** — scope: `gist` only
   - Create at: https://github.com/settings/tokens/new → check `gist`
 - Falcon API credentials — scope: `Alerts > Read`
@@ -53,6 +54,10 @@ pip install -r requirements.txt
 # 2. Configure
 cp config.example.yaml config.yaml
 # Edit config.yaml with your lab IPs, GitHub token, Falcon credentials
+# Key lab fields:
+#   attacker_ip    — IP of your attacker machine (dashboard + SSH)
+#   attacker_host  — optional domain/IP for implant C2 callbacks (defaults to attacker_ip)
+#   attacker_port  — HTTP port for implant delivery and beacons (default: 8080)
 
 # 3. Generate malicious dataset (runs locally, no victim needed)
 python -m attacker.techniques.dataset_poison --output /tmp/imagenet_labels.pkl
@@ -139,6 +144,7 @@ The GitHub Gist C2 replicates the "self-migrating C2 staged on public services" 
 | Ollama not responding | `ollama serve` then `ollama pull llama3.1` |
 | GitHub 401 | Token needs `gist` scope, not just `repo` |
 | Victim not reachable | Check SSH key path in config.yaml, verify 10.4.60.40 is up |
+| Implant not downloaded by victim | Check `attacker_port` is open on attacker host; victim must reach `http://{attacker_host}:{attacker_port}/implant.py` |
 | Falcon detections not appearing | API poll interval default is 10s, detections have 30-90s lag |
 | Pickle not triggering | Victim needs Python 3 with `pickle` module (standard lib) |
 | K8s path not taken | Set `attack.k8s_enabled: true` in config.yaml, install minikube on victim |

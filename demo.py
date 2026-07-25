@@ -48,7 +48,7 @@ def generate_artifacts(cfg: dict, out_dir: str) -> str:
     from attacker.techniques.dataset_poison import generate_pickle, generate_implant
 
     attacker_host = resolve_attacker_host(cfg)
-    attacker_port = 8080
+    attacker_port = cfg["lab"].get("attacker_port", 8080)
 
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     serve_dir = Path(out_dir) / "serve"
